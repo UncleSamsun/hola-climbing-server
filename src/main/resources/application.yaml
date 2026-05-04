@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: hola-climbing-server
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}  # 환경변수 없으면 local 기본
+
+  # 영상 업로드 크기 제한 (멀티파트)
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 500MB        # 영상 한 개당 최대
+      max-request-size: 500MB     # 요청 전체 최대
+      file-size-threshold: 10MB   # 메모리→디스크 전환 임계값
+
+  # Jackson(JSON) 설정
+  jackson:
+    property-naming-strategy: SNAKE_CASE  # camelCase ↔ snake_case 자동 변환
+    default-property-inclusion: non_null  # null 필드 응답에서 제외
+    time-zone: Asia/Seoul
+
+# MyBatis 설정
+mybatis:
+  mapper-locations: classpath:mappers/**/*.xml      # XML Mapper 위치
+  type-aliases-package: com.holaclimbing.server     # @Alias 자동 스캔 패키지
+  type-handlers-package: com.holaclimbing.server.config.typehandler  # 타입 핸들러 위치
+  configuration:
+    map-underscore-to-camel-case: true   # DB의 user_id ↔ Java의 userId 자동 매핑
+    default-fetch-size: 100
+    default-statement-timeout: 30
+    cache-enabled: true
+
+# Swagger UI 경로 설정
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+# 서버 설정
+server:
+  port: 8080
+  shutdown: graceful   # 진행 중인 요청 마무리 후 종료
+  tomcat:
+    connection-timeout: 30s
+    max-swallow-size: 500MB   # 영상 업로드 대비
+
+# Actuator 노출 범위
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+#      show-details: always   # when-authorized → always 변경
+#      show-components: always
+# 앱 자체 커스텀 설정
+app:
+  upload:
+    allowed-extensions: mp4,mov,avi
+    max-duration-seconds: 600

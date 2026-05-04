@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<!-- Spring Boot 4.0.6: BOM(Bill of Materials)에서 모든 Spring 라이브러리 버전 자동 관리 -->
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.0.6</version>
+		<relativePath/>
+	</parent>
+
+	<groupId>com.holaclimbing</groupId>
+	<artifactId>server</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name/>
+	<description/>
+	<url/>
+	<licenses><license/></licenses>
+	<developers><developer/></developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+
+	<properties>
+		<!-- Java 25 LTS: Spring Boot 4.0의 first-class 지원 버전 -->
+		<java.version>25</java.version>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<!-- CVE-2025-55163: Netty MadeYouReset HTTP/2 DDoS 대응 -->
+			<dependency>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-bom</artifactId>
+				<version>4.1.124.Final</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<!-- ========== 운영/모니터링 ========== -->
+
+		<!-- Actuator: /actuator/health, /actuator/metrics 자동 노출. 헬스체크 + 모니터링 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
+
+		<!-- ========== 캐시/큐 ========== -->
+
+		<!-- Redis: 세션 저장, 캐싱, 영상 분석 작업 큐 용도. Lettuce 클라이언트 자동 설정 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+
+
+		<!-- ========== 입력 검증 ========== -->
+
+		<!-- Validation: @NotNull, @Email, @Size 등 DTO 검증. Hibernate Validator 포함 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+
+		<!-- ========== 웹/REST API ========== -->
+
+		<!-- Spring MVC + 내장 Tomcat: REST API 엔드포인트, Jackson(JSON 변환) 포함
+             ⚠️ Boot 4.0에선 'web'이 아니라 'webmvc'로 이름 변경됨 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+
+
+		<!-- ========== 데이터베이스 (PostgreSQL + pgvector + MyBatis) ========== -->
+
+		<!-- MyBatis ↔ Spring Boot 4.0 연동: SQL Mapper 자동 등록, Auto-config
+             버전 4.0.1: Spring Boot 4.0 호환 첫 정식 버전 -->
+		<dependency>
+			<groupId>org.mybatis.spring.boot</groupId>
+			<artifactId>mybatis-spring-boot-starter</artifactId>
+			<version>4.0.1</version>
+		</dependency>
+
+		<!-- pgvector: PostgreSQL의 vector(N) 타입 ↔ Java float[] 변환
+             클라이밍 스타일 임베딩(64차원) 저장/조회용. MyBatis 타입 핸들러에서 사용 -->
+		<dependency>
+			<groupId>com.pgvector</groupId>
+			<artifactId>pgvector</artifactId>
+			<version>0.1.6</version>
+		</dependency>
+
+		<!-- PostgreSQL JDBC 드라이버: 코드에선 직접 안 쓰지만 런타임 DB 연결에 필수 -->
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>42.7.11</version>
+			<scope>runtime</scope>
+		</dependency>
+
+
+		<!-- ========== API 문서화 ========== -->
+
+		<!-- Springdoc: /swagger-ui.html에서 API 자동 문서화 + 브라우저 테스트
+             ⚠️ 2.6.0이 Boot 4.0과 호환 안 될 수 있음. 빌드 후 확인 필요 -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+
+
+		<!-- ========== GCP 연동 ========== -->
+
+		<!-- Google Cloud Storage SDK: 영상 파일 GCS 버킷에 업로드/다운로드
+             GOOGLE_APPLICATION_CREDENTIALS 환경변수로 자동 인증 -->
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-storage</artifactId>
+			<version>2.43.2</version>
+		</dependency>
+
+
+		<!-- ========== 개발 편의 ========== -->
+
+		<!-- DevTools: 코드 변경 시 자동 재시작 + LiveReload. 배포 JAR엔 자동 제외 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+
+		<!-- Lombok: @Getter, @Builder 등 보일러플레이트 코드 제거. 컴파일 타임에만 작동 -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+
+		<!-- ========== 테스트 (Boot 4.0의 새 모듈별 -test 패턴) ========== -->
+
+		<!-- Actuator 테스트: 헬스체크/엔드포인트 테스트용 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Redis 테스트: RedisTemplate, 세션 등 테스트용 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Validation 테스트: @Valid 검증 로직 테스트용 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Web MVC 테스트: @WebMvcTest, MockMvc 등 컨트롤러 테스트용
+             JUnit 5 + Mockito + AssertJ 통합 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Testcontainers + Spring Boot 통합: @ServiceConnection으로 자동 DB 설정 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- MyBatis Mapper 단위 테스트: @MybatisTest 어노테이션 사용 가능 -->
+		<dependency>
+			<groupId>org.mybatis.spring.boot</groupId>
+			<artifactId>mybatis-spring-boot-starter-test</artifactId>
+			<version>4.0.1</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Testcontainers JUnit 5 지원: @Testcontainers, @Container 어노테이션 -->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Testcontainers PostgreSQL: 테스트 시 실제 PostgreSQL 컨테이너 자동 실행
+             pgvector 이미지로도 대체 가능 (예: pgvector/pgvector:pg16) -->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<!-- Spring Boot Maven Plugin: 실행 가능한 fat JAR 생성, 'mvn spring-boot:run' 명령 제공 -->
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!-- Lombok은 컴파일 타임 전용이라 최종 JAR에서 제외 -->
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+
+			<!-- Maven Compiler Plugin: 어노테이션 프로세서 등록 -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<executions>
+					<!-- 메인 코드 컴파일: Lombok + Configuration Processor 활성화 -->
+					<execution>
+						<id>default-compile</id>
+						<phase>compile</phase>
+						<goals><goal>compile</goal></goals>
+						<configuration>
+							<annotationProcessorPaths>
+								<!-- application.yml 자동완성용 메타데이터 생성 -->
+								<path>
+									<groupId>org.springframework.boot</groupId>
+									<artifactId>spring-boot-configuration-processor</artifactId>
+								</path>
+								<!-- Lombok 어노테이션 처리 (@Getter, @Builder 등) -->
+								<path>
+									<groupId>org.projectlombok</groupId>
+									<artifactId>lombok</artifactId>
+								</path>
+							</annotationProcessorPaths>
+						</configuration>
+					</execution>
+
+					<!-- 테스트 코드 컴파일: 테스트에서도 Lombok 사용 가능 -->
+					<execution>
+						<id>default-testCompile</id>
+						<phase>test-compile</phase>
+						<goals><goal>testCompile</goal></goals>
+						<configuration>
+							<annotationProcessorPaths>
+								<path>
+									<groupId>org.projectlombok</groupId>
+									<artifactId>lombok</artifactId>
+								</path>
+							</annotationProcessorPaths>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>
