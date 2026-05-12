@@ -1,4 +1,4 @@
-package com.holaclimbing.server.health.controller;
+package com.holaclimbing.server.domain.health.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
