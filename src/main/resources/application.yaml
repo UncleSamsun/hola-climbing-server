@@ -28,7 +28,7 @@ spring:
 
 # MyBatis 설정
 mybatis:
-  mapper-locations: classpath:mappers/**/*.xml      # XML Mapper 위치
+  mapper-locations: classpath:mapper/**/*.xml      # XML Mapper 위치
   type-aliases-package: com.holaclimbing.server     # @Alias 자동 스캔 패키지
   type-handlers-package: com.holaclimbing.server.config.typehandler  # 타입 핸들러 위치
   configuration:
@@ -40,11 +40,17 @@ mybatis:
 # Swagger UI 경로 설정
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    path: /v1/api-docs
   swagger-ui:
     path: /swagger-ui.html
     tags-sorter: alpha
-    operations-sorter: alpha
+    operations-sorter: method
+    display-request-duration: true   # 요청 소요시간 표시
+    groups-order: asc
+  packages-to-scan:
+    - com.holaclimbing.server.domain
+    - com.holaclimbing.server.common.exception.docs
+  paths-to-match: /api/**
   default-consumes-media-type: application/json
   default-produces-media-type: application/json
 
@@ -73,3 +79,9 @@ app:
   upload:
     allowed-extensions: mp4,mov,avi
     max-duration-seconds: 600
+# JWT 설정
+jwt:
+  secret: ${JWT_SECRET:dev-secret-CHANGE-ME-min-32-chars-long-1234567890}
+  access-token-validity-minutes: 30
+  refresh-token-validity-days: 14
+  issuer: hola-climbing
