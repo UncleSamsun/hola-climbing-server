@@ -5,7 +5,9 @@ import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.video.dto.request.CreateCommentRequest;
 import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UpdateVideoRequest;
+import com.holaclimbing.server.domain.video.dto.request.UploadUrlRequest;
 import com.holaclimbing.server.domain.video.dto.response.CommentResponse;
+import com.holaclimbing.server.domain.video.dto.response.UploadUrlResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoDetailResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoSummaryResponse;
 import com.holaclimbing.server.domain.video.service.CommentService;
@@ -40,6 +42,13 @@ public class VideoController {
 
     private final VideoService videoService;
     private final CommentService commentService;
+
+    @PostMapping("/upload-url")
+    public ApiResponse<UploadUrlResponse> createUploadUrl(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody UploadUrlRequest request) {
+        return ApiResponse.success(videoService.createUploadUrl(userId, request));
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<VideoDetailResponse>> createVideo(

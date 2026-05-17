@@ -5,33 +5,66 @@ import com.holaclimbing.server.common.exception.error.ErrorCode;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.gym.mapper.GymMapper;
 import com.holaclimbing.server.domain.notification.service.NotificationService;
+import com.holaclimbing.server.domain.video.VideoUploadProperties;
 import com.holaclimbing.server.domain.video.domain.Video;
 import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UpdateVideoRequest;
+import com.holaclimbing.server.domain.video.dto.request.UploadUrlRequest;
+import com.holaclimbing.server.domain.video.dto.response.UploadUrlResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoDetailResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoSummaryResponse;
 import com.holaclimbing.server.domain.video.mapper.LikeMapper;
 import com.holaclimbing.server.domain.video.mapper.VideoMapper;
+import com.holaclimbing.server.infrastructure.gcs.GcsProperties;
+import com.holaclimbing.server.infrastructure.gcs.GcsStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class VideoServiceImpl implements VideoService {
 
+    /** 영상 등록 시 초기 상태 — AI 분석 대기. */
+    private static final String STATUS_PENDING = "pending";
+
     private final VideoMapper videoMapper;
     private final LikeMapper likeMapper;
     private final GymMapper gymMapper;
     private final NotificationService notificationService;
+    private final GcsStorageService gcsStorageService;
+    private final GcsProperties gcsProperties;
+    private final VideoUploadProperties uploadProperties;
+
+    @Override
+    public UploadUrlResponse createUploadUrl(Long userId, UploadUrlRequest request) {
+        String extension = extractExtension(request.fileName());
+        if (!uploadProperties.allowedExtensions().contains(extension)) {
+            throw new BusinessException(ErrorCode.UNSUPPORTED_VIDEO_FORMAT);
+        }
+        if (request.fileSizeBytes() > uploadProperties.maxFileSizeBytes()) {
+            throw new BusinessException(ErrorCode.VIDEO_TOO_LARGE);
+        }
+        String objectPath = "%s/%d/%s.%s".formatted(
+                gcsProperties.uploadPrefix(), userId, UUID.randomUUID(), extension);
+        String uploadUrl = gcsStorageService.createUploadUrl(objectPath, request.contentType());
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(gcsProperties.signedUrlMinutes());
+        return new UploadUrlResponse(uploadUrl, objectPath, request.contentType(), expiresAt);
+    }
 
     @Override
     @Transactional
     public VideoDetailResponse createVideo(Long userId, CreateVideoRequest request) {
         if (request.gymId() != null && gymMapper.findById(request.gymId()) == null) {
             throw new BusinessException(ErrorCode.GYM_NOT_FOUND);
+        }
+        if (request.durationSeconds() != null
+                && request.durationSeconds() > uploadProperties.maxDurationSeconds()) {
+            throw new BusinessException(ErrorCode.VIDEO_TOO_LONG);
         }
         Video video = Video.builder()
                 .userId(userId)
@@ -42,17 +75,20 @@ public class VideoServiceImpl implements VideoService {
                 .gcsPath(request.gcsPath())
                 .thumbnailPath(request.thumbnailPath())
                 .durationSeconds(request.durationSeconds())
+                .status(STATUS_PENDING)
                 .isPublic(request.isPublic() == null || request.isPublic())
                 .build();
         videoMapper.insert(video);
-        return VideoDetailResponse.of(videoMapper.findById(video.getId()), false);
+        return toDetail(videoMapper.findById(video.getId()), false);
     }
 
     @Override
     public PageResponse<VideoSummaryResponse> getFeed(Long uploaderId, int page, int size) {
         long total = videoMapper.countFeed(uploaderId);
         List<VideoSummaryResponse> content = videoMapper.findFeed(uploaderId, size, page * size)
-                .stream().map(VideoSummaryResponse::from).toList();
+                .stream()
+                .map(v -> VideoSummaryResponse.from(v, gcsStorageService.createReadUrl(v.getGcsPath())))
+                .toList();
         return PageResponse.of(content, page, size, total);
     }
 
@@ -65,7 +101,7 @@ public class VideoServiceImpl implements VideoService {
         }
         videoMapper.incrementViewCount(videoId);
         boolean isLiked = viewerId != null && likeMapper.exists(viewerId, videoId);
-        return VideoDetailResponse.of(videoMapper.findById(videoId), isLiked);
+        return toDetail(videoMapper.findById(videoId), isLiked);
     }
 
     @Override
@@ -76,7 +112,7 @@ public class VideoServiceImpl implements VideoService {
         videoMapper.updateVideo(videoId, request.title(), request.description(),
                 request.grade(), request.isPublic());
         boolean isLiked = likeMapper.exists(userId, videoId);
-        return VideoDetailResponse.of(videoMapper.findById(videoId), isLiked);
+        return toDetail(videoMapper.findById(videoId), isLiked);
     }
 
     @Override
@@ -105,6 +141,18 @@ public class VideoServiceImpl implements VideoService {
         if (likeMapper.delete(userId, videoId) > 0) {
             videoMapper.decrementLikeCount(videoId);
         }
+    }
+
+    private VideoDetailResponse toDetail(Video video, boolean isLiked) {
+        return VideoDetailResponse.of(video, isLiked, gcsStorageService.createReadUrl(video.getGcsPath()));
+    }
+
+    private String extractExtension(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        if (dot < 0 || dot == fileName.length() - 1) {
+            throw new BusinessException(ErrorCode.UNSUPPORTED_VIDEO_FORMAT);
+        }
+        return fileName.substring(dot + 1).toLowerCase();
     }
 
     private Video findActiveVideo(Long videoId) {

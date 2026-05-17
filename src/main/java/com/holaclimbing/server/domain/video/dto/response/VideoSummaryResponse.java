@@ -11,16 +11,18 @@ public record VideoSummaryResponse(
         String title,
         String grade,
         String thumbnailPath,
+        String streamUrl,
         Integer durationSeconds,
         int viewCount,
         int likeCount,
         int commentCount,
         LocalDateTime createdAt
 ) {
-    public static VideoSummaryResponse from(Video video) {
+    /** streamUrl은 GCS 읽기 Signed URL — 서비스 계층에서 발급해 주입한다. */
+    public static VideoSummaryResponse from(Video video, String streamUrl) {
         return new VideoSummaryResponse(
                 video.getId(), video.getUserId(), video.getGymId(), video.getTitle(), video.getGrade(),
-                video.getThumbnailPath(), video.getDurationSeconds(), video.getViewCount(),
+                video.getThumbnailPath(), streamUrl, video.getDurationSeconds(), video.getViewCount(),
                 video.getLikeCount(), video.getCommentCount(), video.getCreatedAt());
     }
 }

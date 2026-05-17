@@ -14,10 +14,10 @@
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO videos (user_id, gym_id, title, description, grade,
                             gcs_path, gcs_streaming_path, thumbnail_path,
-                            duration_seconds, file_size_bytes, mime_type, is_public)
+                            duration_seconds, file_size_bytes, mime_type, status, is_public)
         VALUES (#{userId}, #{gymId}, #{title}, #{description}, #{grade},
                 #{gcsPath}, #{gcsStreamingPath}, #{thumbnailPath},
-                #{durationSeconds}, #{fileSizeBytes}, #{mimeType}, #{isPublic})
+                #{durationSeconds}, #{fileSizeBytes}, #{mimeType}, #{status}, #{isPublic})
     </insert>
 
     <select id="findById" resultType="com.holaclimbing.server.domain.video.domain.Video">

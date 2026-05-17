@@ -14,6 +14,7 @@ public record VideoDetailResponse(
         String gcsPath,
         String gcsStreamingPath,
         String thumbnailPath,
+        String streamUrl,
         Integer durationSeconds,
         String status,
         boolean isPublic,
@@ -24,12 +25,14 @@ public record VideoDetailResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static VideoDetailResponse of(Video video, boolean isLiked) {
+    /** streamUrl은 GCS 읽기 Signed URL — 서비스 계층에서 발급해 주입한다. */
+    public static VideoDetailResponse of(Video video, boolean isLiked, String streamUrl) {
         return new VideoDetailResponse(
                 video.getId(), video.getUserId(), video.getGymId(), video.getTitle(),
                 video.getDescription(), video.getGrade(), video.getGcsPath(),
-                video.getGcsStreamingPath(), video.getThumbnailPath(), video.getDurationSeconds(),
-                video.getStatus(), video.isPublic(), video.getViewCount(), video.getLikeCount(),
-                video.getCommentCount(), isLiked, video.getCreatedAt(), video.getUpdatedAt());
+                video.getGcsStreamingPath(), video.getThumbnailPath(), streamUrl,
+                video.getDurationSeconds(), video.getStatus(), video.isPublic(),
+                video.getViewCount(), video.getLikeCount(), video.getCommentCount(),
+                isLiked, video.getCreatedAt(), video.getUpdatedAt());
     }
 }

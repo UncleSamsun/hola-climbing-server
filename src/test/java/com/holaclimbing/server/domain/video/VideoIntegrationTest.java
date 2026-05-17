@@ -9,6 +9,7 @@ import com.holaclimbing.server.domain.user.mapper.UserMapper;
 import com.holaclimbing.server.domain.video.dto.request.CreateCommentRequest;
 import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UpdateVideoRequest;
+import com.holaclimbing.server.domain.video.dto.request.UploadUrlRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,7 +68,7 @@ class VideoIntegrationTest {
     }
 
     @Test
-    @DisplayName("영상 등록 성공 — 201, uploaded 상태로 저장된다")
+    @DisplayName("영상 등록 성공 — 201, pending(분석 대기) 상태로 저장된다")
     void createVideo_success() throws Exception {
         String token = register("a@hola.com", "climberone");
 
@@ -77,9 +78,64 @@ class VideoIntegrationTest {
                         .content(objectMapper.writeValueAsString(videoRequest(true))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").isNumber())
-                .andExpect(jsonPath("$.data.status").value("uploaded"))
+                .andExpect(jsonPath("$.data.status").value("pending"))
+                .andExpect(jsonPath("$.data.stream_url").exists())
                 .andExpect(jsonPath("$.data.view_count").value(0))
                 .andExpect(jsonPath("$.data.is_public").value(true));
+    }
+
+    @Test
+    @DisplayName("업로드 URL 발급 — 인증 사용자는 Signed URL과 gcs_path를 받는다")
+    void createUploadUrl_success() throws Exception {
+        String token = register("a@hola.com", "climberone");
+
+        mockMvc.perform(post("/api/videos/upload-url")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new UploadUrlRequest("send.mp4", "video/mp4", 10_000_000L))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.upload_url").exists())
+                .andExpect(jsonPath("$.data.gcs_path").value(org.hamcrest.Matchers.endsWith(".mp4")))
+                .andExpect(jsonPath("$.data.expires_at").exists());
+    }
+
+    @Test
+    @DisplayName("업로드 URL 발급 실패 — 토큰 없이 호출하면 401")
+    void createUploadUrl_withoutToken_returns401() throws Exception {
+        mockMvc.perform(post("/api/videos/upload-url")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new UploadUrlRequest("send.mp4", "video/mp4", 10_000_000L))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("업로드 URL 발급 실패 — 지원하지 않는 확장자는 400 V004")
+    void createUploadUrl_unsupportedFormat_returns400() throws Exception {
+        String token = register("a@hola.com", "climberone");
+
+        mockMvc.perform(post("/api/videos/upload-url")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new UploadUrlRequest("send.avi", "video/x-msvideo", 10_000_000L))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("V004"));
+    }
+
+    @Test
+    @DisplayName("업로드 URL 발급 실패 — 200MB 초과는 413 V002")
+    void createUploadUrl_tooLarge_returns413() throws Exception {
+        String token = register("a@hola.com", "climberone");
+
+        mockMvc.perform(post("/api/videos/upload-url")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new UploadUrlRequest("send.mp4", "video/mp4", 209_715_201L))))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value("V002"));
     }
 
     @Test
