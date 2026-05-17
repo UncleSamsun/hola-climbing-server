@@ -1,5 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.holaclimbing.server.domain.report.mapper.ReportMapper">
-    <!-- TODO: Report SQL -->
+
+    <insert id="insert" parameterType="com.holaclimbing.server.domain.report.domain.Report"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO reports (reporter_id, target_type, target_id, reason_code, reason_detail)
+        VALUES (#{reporterId}, #{targetType}, #{targetId}, #{reasonCode}, #{reasonDetail})
+    </insert>
+
+    <select id="findById" resultType="com.holaclimbing.server.domain.report.domain.Report">
+        SELECT id, reporter_id, target_type, target_id, reason_code, reason_detail,
+               status, reviewed_by, reviewed_at, created_at
+        FROM reports
+        WHERE id = #{id}
+    </select>
+
+    <select id="existsByReporterAndTarget" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM reports
+            WHERE reporter_id = #{reporterId}
+              AND target_type = #{targetType}
+              AND target_id = #{targetId}
+        )
+    </select>
+
 </mapper>
