@@ -1,5 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.holaclimbing.server.domain.favorite.mapper.FavoriteMapper">
-    <!-- TODO: Favorite SQL -->
+
+    <insert id="insert">
+        INSERT INTO favorites (user_id, gym_id)
+        VALUES (#{userId}, #{gymId})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM favorites
+        WHERE user_id = #{userId} AND gym_id = #{gymId}
+    </delete>
+
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM favorites
+            WHERE user_id = #{userId} AND gym_id = #{gymId}
+        )
+    </select>
+
+    <select id="countByUser" resultType="long">
+        SELECT COUNT(*)
+        FROM favorites f
+        JOIN gyms g ON g.id = f.gym_id
+        WHERE f.user_id = #{userId}
+          AND g.status = 'active' AND g.deleted_at IS NULL
+    </select>
+
+    <select id="findFavoriteGyms" resultType="com.holaclimbing.server.domain.gym.domain.Gym">
+        SELECT g.id, g.name, g.address, g.thumbnail_url, g.region_code,
+               g.rating_avg, g.rating_count
+        FROM favorites f
+        JOIN gyms g ON g.id = f.gym_id
+        WHERE f.user_id = #{userId}
+          AND g.status = 'active' AND g.deleted_at IS NULL
+        ORDER BY f.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
 </mapper>

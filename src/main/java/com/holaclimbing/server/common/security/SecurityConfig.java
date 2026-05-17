@@ -86,6 +86,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE,
                                 "/api/users/*/follow",
                                 "/api/users/*/block").authenticated()
+                        // 즐겨찾기 — 본인 전용
+                        .requestMatchers("/api/favorites/**").authenticated()
                         // 개발 단계: 그 외도 일단 다 통과
                         // TODO(release): 아래 줄을 .authenticated()로 바꾸고 보호 필요 API에 @PreAuthorize
                         .anyRequest().permitAll()
