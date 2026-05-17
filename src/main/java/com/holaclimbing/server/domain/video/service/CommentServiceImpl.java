@@ -1,0 +1,71 @@
+package com.holaclimbing.server.domain.video.service;
+
+import com.holaclimbing.server.common.exception.BusinessException;
+import com.holaclimbing.server.common.exception.error.ErrorCode;
+import com.holaclimbing.server.common.response.PageResponse;
+import com.holaclimbing.server.domain.video.domain.Comment;
+import com.holaclimbing.server.domain.video.dto.request.CreateCommentRequest;
+import com.holaclimbing.server.domain.video.dto.response.CommentResponse;
+import com.holaclimbing.server.domain.video.mapper.CommentMapper;
+import com.holaclimbing.server.domain.video.mapper.VideoMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CommentServiceImpl implements CommentService {
+
+    private final CommentMapper commentMapper;
+    private final VideoMapper videoMapper;
+
+    @Override
+    @Transactional
+    public CommentResponse addComment(Long userId, Long videoId, CreateCommentRequest request) {
+        if (videoMapper.findById(videoId) == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        if (request.parentId() != null) {
+            Comment parent = commentMapper.findById(request.parentId());
+            if (parent == null || !parent.getVideoId().equals(videoId)) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT, "부모 댓글이 올바르지 않습니다.");
+            }
+        }
+        Comment comment = Comment.builder()
+                .userId(userId)
+                .videoId(videoId)
+                .parentId(request.parentId())
+                .content(request.content())
+                .build();
+        commentMapper.insert(comment);
+        videoMapper.incrementCommentCount(videoId);
+        return CommentResponse.from(commentMapper.findById(comment.getId()));
+    }
+
+    @Override
+    public PageResponse<CommentResponse> getComments(Long videoId, int page, int size) {
+        if (videoMapper.findById(videoId) == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        long total = commentMapper.countByVideoId(videoId);
+        List<CommentResponse> content = commentMapper.findByVideoId(videoId, size, page * size)
+                .stream().map(CommentResponse::from).toList();
+        return PageResponse.of(content, page, size, total);
+    }
+
+    @Override
+    @Transactional
+    public void deleteComment(Long userId, Long commentId) {
+        Comment comment = commentMapper.findById(commentId);
+        if (comment == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        if (!comment.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        commentMapper.softDelete(commentId);
+        videoMapper.decrementCommentCount(comment.getVideoId());
+    }
+}

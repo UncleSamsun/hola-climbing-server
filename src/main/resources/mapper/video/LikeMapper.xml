@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.holaclimbing.server.domain.video.mapper.LikeMapper">
+
+    <insert id="insert">
+        INSERT INTO likes (user_id, video_id)
+        VALUES (#{userId}, #{videoId})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM likes
+        WHERE user_id = #{userId} AND video_id = #{videoId}
+    </delete>
+
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM likes
+            WHERE user_id = #{userId} AND video_id = #{videoId}
+        )
+    </select>
+
+</mapper>

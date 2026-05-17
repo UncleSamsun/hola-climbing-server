@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.holaclimbing.server.domain.video.mapper.CommentMapper">
+
+    <insert id="insert" parameterType="com.holaclimbing.server.domain.video.domain.Comment"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comments (user_id, video_id, parent_id, content)
+        VALUES (#{userId}, #{videoId}, #{parentId}, #{content})
+    </insert>
+
+    <select id="findById" resultType="com.holaclimbing.server.domain.video.domain.Comment">
+        SELECT id, user_id, video_id, parent_id, content, created_at, updated_at, deleted_at
+        FROM comments
+        WHERE id = #{id} AND deleted_at IS NULL
+    </select>
+
+    <select id="findByVideoId" resultType="com.holaclimbing.server.domain.video.domain.Comment">
+        SELECT id, user_id, video_id, parent_id, content, created_at, updated_at, deleted_at
+        FROM comments
+        WHERE video_id = #{videoId} AND deleted_at IS NULL
+        ORDER BY created_at, id
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countByVideoId" resultType="long">
+        SELECT COUNT(*) FROM comments WHERE video_id = #{videoId} AND deleted_at IS NULL
+    </select>
+
+    <update id="softDelete">
+        UPDATE comments SET deleted_at = NOW(), updated_at = NOW() WHERE id = #{id}
+    </update>
+
+</mapper>
