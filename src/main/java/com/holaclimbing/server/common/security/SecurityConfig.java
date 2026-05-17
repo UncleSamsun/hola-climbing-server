@@ -88,6 +88,8 @@ public class SecurityConfig {
                                 "/api/users/*/block").authenticated()
                         // 즐겨찾기 — 본인 전용
                         .requestMatchers("/api/favorites/**").authenticated()
+                        // 알림 — 본인 전용
+                        .requestMatchers("/api/notifications/**").authenticated()
                         // 영상 등록·수정·삭제·좋아요·댓글 — 인증 필요 (GET 피드/상세/댓글목록은 위에서 공개)
                         .requestMatchers(HttpMethod.POST, "/api/videos", "/api/videos/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/videos/**").authenticated()

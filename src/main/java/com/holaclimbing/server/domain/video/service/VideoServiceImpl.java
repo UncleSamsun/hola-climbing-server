@@ -4,6 +4,7 @@ import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.gym.mapper.GymMapper;
+import com.holaclimbing.server.domain.notification.service.NotificationService;
 import com.holaclimbing.server.domain.video.domain.Video;
 import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UpdateVideoRequest;
@@ -24,6 +25,7 @@ public class VideoServiceImpl implements VideoService {
     private final VideoMapper videoMapper;
     private final LikeMapper likeMapper;
     private final GymMapper gymMapper;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -88,12 +90,13 @@ public class VideoServiceImpl implements VideoService {
     @Override
     @Transactional
     public void likeVideo(Long userId, Long videoId) {
-        findActiveVideo(videoId);
+        Video video = findActiveVideo(videoId);
         if (likeMapper.exists(userId, videoId)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 좋아요한 영상입니다.");
         }
         likeMapper.insert(userId, videoId);
         videoMapper.incrementLikeCount(videoId);
+        notificationService.notifyLike(video.getUserId(), userId, videoId);
     }
 
     @Override

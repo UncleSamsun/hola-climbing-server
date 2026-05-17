@@ -3,7 +3,9 @@ package com.holaclimbing.server.domain.video.service;
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
 import com.holaclimbing.server.common.response.PageResponse;
+import com.holaclimbing.server.domain.notification.service.NotificationService;
 import com.holaclimbing.server.domain.video.domain.Comment;
+import com.holaclimbing.server.domain.video.domain.Video;
 import com.holaclimbing.server.domain.video.dto.request.CreateCommentRequest;
 import com.holaclimbing.server.domain.video.dto.response.CommentResponse;
 import com.holaclimbing.server.domain.video.mapper.CommentMapper;
@@ -20,15 +22,18 @@ public class CommentServiceImpl implements CommentService {
 
     private final CommentMapper commentMapper;
     private final VideoMapper videoMapper;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
     public CommentResponse addComment(Long userId, Long videoId, CreateCommentRequest request) {
-        if (videoMapper.findById(videoId) == null) {
+        Video video = videoMapper.findById(videoId);
+        if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
+        Comment parent = null;
         if (request.parentId() != null) {
-            Comment parent = commentMapper.findById(request.parentId());
+            parent = commentMapper.findById(request.parentId());
             if (parent == null || !parent.getVideoId().equals(videoId)) {
                 throw new BusinessException(ErrorCode.INVALID_INPUT, "부모 댓글이 올바르지 않습니다.");
             }
@@ -41,6 +46,12 @@ public class CommentServiceImpl implements CommentService {
                 .build();
         commentMapper.insert(comment);
         videoMapper.incrementCommentCount(videoId);
+
+        if (parent != null) {
+            notificationService.notifyReply(parent.getUserId(), userId, comment.getId());
+        } else {
+            notificationService.notifyComment(video.getUserId(), userId, videoId);
+        }
         return CommentResponse.from(commentMapper.findById(comment.getId()));
     }
 

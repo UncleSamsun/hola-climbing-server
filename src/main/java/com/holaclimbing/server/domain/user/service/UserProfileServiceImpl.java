@@ -8,6 +8,7 @@ import com.holaclimbing.server.domain.user.dto.request.UpdateProfileRequest;
 import com.holaclimbing.server.domain.user.dto.response.MyProfileResponse;
 import com.holaclimbing.server.domain.user.dto.response.UserProfileResponse;
 import com.holaclimbing.server.domain.user.dto.response.UserSummaryResponse;
+import com.holaclimbing.server.domain.notification.service.NotificationService;
 import com.holaclimbing.server.domain.user.mapper.FollowMapper;
 import com.holaclimbing.server.domain.user.mapper.UserBlockMapper;
 import com.holaclimbing.server.domain.user.mapper.UserMapper;
@@ -24,6 +25,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final UserMapper userMapper;
     private final FollowMapper followMapper;
     private final UserBlockMapper userBlockMapper;
+    private final NotificationService notificationService;
 
     @Override
     public MyProfileResponse getMyProfile(Long userId) {
@@ -68,6 +70,7 @@ public class UserProfileServiceImpl implements UserProfileService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 팔로우한 사용자입니다.");
         }
         followMapper.insert(followerId, followingId);
+        notificationService.notifyFollow(followingId, followerId);
     }
 
     @Override
