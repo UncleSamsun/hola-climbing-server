@@ -9,11 +9,12 @@ public record ChatMessageResponse(
         Long roomId,
         Long userId,
         String content,
+        boolean verifiedAtGym,
         LocalDateTime createdAt
 ) {
     public static ChatMessageResponse of(ChatMessage message) {
         return new ChatMessageResponse(
                 message.getId(), message.getRoomId(), message.getUserId(),
-                message.getContent(), message.getCreatedAt());
+                message.getContent(), message.isVerifiedAtGym(), message.getCreatedAt());
     }
 }

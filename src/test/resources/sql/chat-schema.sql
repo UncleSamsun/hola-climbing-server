@@ -23,10 +23,11 @@ CREATE TABLE chat_room_members (
 );
 
 CREATE TABLE chat_messages (
-    id          BIGSERIAL PRIMARY KEY,
-    room_id     BIGINT NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
-    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    content     TEXT NOT NULL,
-    created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
-    deleted_at  TIMESTAMP
+    id              BIGSERIAL PRIMARY KEY,
+    room_id         BIGINT NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content         TEXT NOT NULL,
+    verified_at_gym BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at      TIMESTAMP
 );

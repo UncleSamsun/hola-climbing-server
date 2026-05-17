@@ -20,6 +20,7 @@ public class ChatMessage {
     private Long roomId;
     private Long userId;
     private String content;
+    private boolean verifiedAtGym;
     private LocalDateTime createdAt;
     private LocalDateTime deletedAt;
 }

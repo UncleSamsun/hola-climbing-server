@@ -34,18 +34,18 @@
 
     <insert id="insertMessage" parameterType="com.holaclimbing.server.domain.chat.domain.ChatMessage"
             useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO chat_messages (room_id, user_id, content)
-        VALUES (#{roomId}, #{userId}, #{content})
+        INSERT INTO chat_messages (room_id, user_id, content, verified_at_gym)
+        VALUES (#{roomId}, #{userId}, #{content}, #{verifiedAtGym})
     </insert>
 
     <select id="findMessageById" resultType="com.holaclimbing.server.domain.chat.domain.ChatMessage">
-        SELECT id, room_id, user_id, content, created_at, deleted_at
+        SELECT id, room_id, user_id, content, verified_at_gym, created_at, deleted_at
         FROM chat_messages
         WHERE id = #{id}
     </select>
 
     <select id="findMessages" resultType="com.holaclimbing.server.domain.chat.domain.ChatMessage">
-        SELECT id, room_id, user_id, content, created_at, deleted_at
+        SELECT id, room_id, user_id, content, verified_at_gym, created_at, deleted_at
         FROM chat_messages
         WHERE room_id = #{roomId} AND deleted_at IS NULL
         ORDER BY created_at DESC, id DESC

@@ -354,12 +354,13 @@ CREATE INDEX idx_chat_members_room ON chat_room_members(room_id) WHERE left_at I
 
 
 CREATE TABLE chat_messages (
-    id          BIGSERIAL PRIMARY KEY,
-    room_id     BIGINT NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
-    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    content     TEXT NOT NULL,
-    created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
-    deleted_at  TIMESTAMP
+    id              BIGSERIAL PRIMARY KEY,
+    room_id         BIGINT NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content         TEXT NOT NULL,
+    verified_at_gym BOOLEAN NOT NULL DEFAULT FALSE,  -- 작성 시 암장 300m 반경 내 여부
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at      TIMESTAMP
 );
 CREATE INDEX idx_chat_messages_room ON chat_messages(room_id, created_at DESC);
 

@@ -10,6 +10,7 @@ import com.holaclimbing.server.domain.chat.dto.request.SendMessageRequest;
 import com.holaclimbing.server.domain.chat.dto.response.ChatMessageResponse;
 import com.holaclimbing.server.domain.chat.dto.response.ChatRoomResponse;
 import com.holaclimbing.server.domain.chat.mapper.ChatMapper;
+import com.holaclimbing.server.domain.gym.domain.Gym;
 import com.holaclimbing.server.domain.gym.mapper.GymMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,10 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
+
+    /** 암장 인증 반경 (미터). 이 거리 안에서 보낸 메시지는 verifiedAtGym=true. */
+    private static final double GYM_VERIFY_RADIUS_M = 300;
+    private static final double EARTH_RADIUS_M = 6_371_000;
 
     private final ChatMapper chatMapper;
     private final GymMapper gymMapper;
@@ -48,7 +53,8 @@ public class ChatServiceImpl implements ChatService {
         if (request == null || request.content() == null || request.content().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "메시지 내용이 비어 있습니다.");
         }
-        if (chatMapper.findRoomById(roomId) == null) {
+        ChatRoom room = chatMapper.findRoomById(roomId);
+        if (room == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "채팅방을 찾을 수 없습니다.");
         }
         ChatRoomMember member = chatMapper.findMember(roomId, userId);
@@ -59,9 +65,32 @@ public class ChatServiceImpl implements ChatService {
                 .roomId(roomId)
                 .userId(userId)
                 .content(request.content().strip())
+                .verifiedAtGym(verifyAtGym(room.getGymId(), request.lat(), request.lng()))
                 .build();
         chatMapper.insertMessage(message);
         return ChatMessageResponse.of(chatMapper.findMessageById(message.getId()));
+    }
+
+    /** 보낸 위치가 암장 {@value #GYM_VERIFY_RADIUS_M}m 반경 내인지 판정. 위치 미제공 시 false. */
+    private boolean verifyAtGym(Long gymId, Double lat, Double lng) {
+        if (lat == null || lng == null) {
+            return false;
+        }
+        Gym gym = gymMapper.findById(gymId);
+        if (gym == null || gym.getLat() == null || gym.getLng() == null) {
+            return false;
+        }
+        return distanceMeters(gym.getLat(), gym.getLng(), lat, lng) <= GYM_VERIFY_RADIUS_M;
+    }
+
+    /** 두 좌표 간 거리(미터) — Haversine. */
+    private double distanceMeters(double lat1, double lng1, double lat2, double lng2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(a));
     }
 
     @Override

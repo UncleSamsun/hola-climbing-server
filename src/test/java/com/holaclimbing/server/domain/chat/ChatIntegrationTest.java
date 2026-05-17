@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.TestcontainersConfiguration;
 import com.holaclimbing.server.domain.chat.dto.request.SendMessageRequest;
 import com.holaclimbing.server.domain.chat.dto.response.ChatMessageResponse;
+import com.holaclimbing.server.domain.chat.service.ChatService;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
 import com.holaclimbing.server.domain.user.dto.request.SignupRequest;
 import com.holaclimbing.server.domain.user.mapper.UserMapper;
@@ -16,7 +17,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -25,6 +25,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
@@ -70,8 +71,15 @@ class ChatIntegrationTest {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private ChatService chatService;
+
     @Value("${local.server.port}")
     private int port;
+
+    /** 암장 1(TheClimb Gangnam) 좌표 — gyms-data.sql 기준. */
+    private static final double GYM1_LAT = 37.4979;
+    private static final double GYM1_LNG = 127.0276;
 
     @Test
     @DisplayName("채팅방 입장 — 암장 채팅방에 입장하면 방 정보를 받는다")
@@ -135,34 +143,69 @@ class ChatIntegrationTest {
                         new StompSessionHandlerAdapter() {})
                 .get(5, TimeUnit.SECONDS);
 
+        // 브로드캐스트 payload는 raw 바이트로 받아 앱 ObjectMapper(snake_case)로 파싱한다.
         BlockingQueue<ChatMessageResponse> received = new LinkedBlockingQueue<>();
         session.subscribe("/topic/chat/" + roomId, new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
-                return ChatMessageResponse.class;
+                return byte[].class;
             }
 
             @Override
             public void handleFrame(StompHeaders headers, Object payload) {
-                received.add((ChatMessageResponse) payload);
+                try {
+                    received.add(objectMapper.readValue((byte[]) payload, ChatMessageResponse.class));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
         Thread.sleep(300);  // 구독 등록이 서버에 반영될 시간
 
-        session.send("/app/chat/" + roomId, new SendMessageRequest("first send!"));
+        // 암장 좌표와 동일한 위치에서 전송 → verified_at_gym=true
+        StompHeaders sendHeaders = new StompHeaders();
+        sendHeaders.setDestination("/app/chat/" + roomId);
+        sendHeaders.setContentType(MimeTypeUtils.APPLICATION_JSON);
+        session.send(sendHeaders,
+                objectMapper.writeValueAsBytes(new SendMessageRequest("first send!", GYM1_LAT, GYM1_LNG)));
 
         ChatMessageResponse delivered = received.poll(5, TimeUnit.SECONDS);
         assertThat(delivered).isNotNull();
         assertThat(delivered.content()).isEqualTo("first send!");
+        assertThat(delivered.verifiedAtGym()).isTrue();
 
         mockMvc.perform(get("/api/chats/rooms/" + roomId + "/messages")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total_elements").value(1))
-                .andExpect(jsonPath("$.data.content[0].content").value("first send!"));
+                .andExpect(jsonPath("$.data.content[0].content").value("first send!"))
+                .andExpect(jsonPath("$.data.content[0].verified_at_gym").value(true));
 
         session.disconnect();
         client.stop();
+    }
+
+    @Test
+    @DisplayName("GPS 인증 — 암장 반경 내/밖/위치없음에 따라 verifiedAtGym이 결정된다")
+    void sendMessage_gpsVerification() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        long roomId = joinRoom(token, 1L);
+        Long userId = userMapper.findByEmail("a@hola.com").getId();
+
+        // 암장 300m 반경 내 (약 14m)
+        ChatMessageResponse near = chatService.sendMessage(roomId, userId,
+                new SendMessageRequest("at the gym", GYM1_LAT + 0.0001, GYM1_LNG + 0.0001));
+        assertThat(near.verifiedAtGym()).isTrue();
+
+        // 암장에서 멀리 떨어진 위치
+        ChatMessageResponse far = chatService.sendMessage(roomId, userId,
+                new SendMessageRequest("far away", 37.5665, 126.9780));
+        assertThat(far.verifiedAtGym()).isFalse();
+
+        // 위치 미제공
+        ChatMessageResponse noLocation = chatService.sendMessage(roomId, userId,
+                new SendMessageRequest("no location", null, null));
+        assertThat(noLocation.verifiedAtGym()).isFalse();
     }
 
     @Test
@@ -179,10 +222,9 @@ class ChatIntegrationTest {
 
     // ===== helpers =====
 
+    /** 기본 SimpleMessageConverter 사용 — payload는 raw 바이트로 주고받는다. */
     private WebSocketStompClient stompClient() {
-        WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
-        client.setMessageConverter(new JacksonJsonMessageConverter());
-        return client;
+        return new WebSocketStompClient(new StandardWebSocketClient());
     }
 
     private long joinRoom(String token, long gymId) throws Exception {
