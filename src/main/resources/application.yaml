@@ -89,6 +89,10 @@ gcs:
   bucket: ${GCS_BUCKET:hola-climbing-log-videos}
   upload-prefix: videos/uploads        # 업로드 객체 경로 prefix
   signed-url-minutes: 15               # Signed URL 유효시간(분)
+
+# AI 분석 워커(Python) 연동 — 영상 등록 시 분석 요청 디스패치
+ai:
+  analysis-url: ${AI_ANALYSIS_URL:}    # 비어 있으면 디스패치 비활성화 (개발 환경)
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET:dev-secret-CHANGE-ME-min-32-chars-long-1234567890}

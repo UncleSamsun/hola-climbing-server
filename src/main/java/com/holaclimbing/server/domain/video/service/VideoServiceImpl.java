@@ -15,6 +15,7 @@ import com.holaclimbing.server.domain.video.dto.response.VideoDetailResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoSummaryResponse;
 import com.holaclimbing.server.domain.video.mapper.LikeMapper;
 import com.holaclimbing.server.domain.video.mapper.VideoMapper;
+import com.holaclimbing.server.infrastructure.ai.AnalysisDispatcher;
 import com.holaclimbing.server.infrastructure.gcs.GcsProperties;
 import com.holaclimbing.server.infrastructure.gcs.GcsStorageService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class VideoServiceImpl implements VideoService {
     private final GcsStorageService gcsStorageService;
     private final GcsProperties gcsProperties;
     private final VideoUploadProperties uploadProperties;
+    private final AnalysisDispatcher analysisDispatcher;
 
     @Override
     public UploadUrlResponse createUploadUrl(Long userId, UploadUrlRequest request) {
@@ -79,6 +81,8 @@ public class VideoServiceImpl implements VideoService {
                 .isPublic(request.isPublic() == null || request.isPublic())
                 .build();
         videoMapper.insert(video);
+        // 등록 즉시 AI 워커에 분석 요청 (비동기 — 실패해도 영상은 pending으로 남는다).
+        analysisDispatcher.dispatch(video.getId(), video.getGcsPath());
         return toDetail(videoMapper.findById(video.getId()), false);
     }
 
