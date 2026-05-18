@@ -1,5 +1,9 @@
 package com.holaclimbing.server.domain.stats.service;
 
+import com.holaclimbing.server.domain.stats.dto.response.UserStatsResponse;
+
 public interface StatsService {
-    // TODO: Stats 서비스 메서드 정의
+
+    /** 사용자 클라이밍 통계 조회. 분석 데이터가 없으면 0으로 채운 통계를 반환한다. */
+    UserStatsResponse getUserStats(Long userId);
 }

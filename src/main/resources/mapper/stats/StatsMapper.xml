@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.holaclimbing.server.domain.stats.mapper.StatsMapper">
-    <!-- TODO: Stats SQL -->
+
+    <!-- technique_counts(jsonb)는 String으로 읽어 서비스에서 파싱한다. -->
+    <select id="findByUserId" resultType="com.holaclimbing.server.domain.stats.domain.Stats">
+        SELECT user_id, total_videos, total_climbing_seconds,
+               technique_counts, last_climbed_at, updated_at
+        FROM user_stats
+        WHERE user_id = #{userId}
+    </select>
+
 </mapper>
