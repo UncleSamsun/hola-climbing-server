@@ -7,6 +7,7 @@ import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
 import com.holaclimbing.server.domain.user.dto.request.SignupRequest;
 import com.holaclimbing.server.domain.user.dto.request.VerifyEmailRequest;
 import com.holaclimbing.server.domain.user.dto.request.UpdateProfileRequest;
+import com.holaclimbing.server.domain.user.dto.request.WithdrawRequest;
 import com.holaclimbing.server.domain.user.mapper.UserMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -244,6 +245,35 @@ class UserProfileIntegrationTest {
 
         mockMvc.perform(get("/api/users/me/blocks").header("Authorization", "Bearer " + a.token()))
                 .andExpect(jsonPath("$.data.total_elements").value(0));
+    }
+
+    @Test
+    @DisplayName("회원 탈퇴 — 비밀번호 확인 후 탈퇴하면 재로그인이 막힌다")
+    void withdraw_success() throws Exception {
+        TestUser me = register("quit@hola.com", "quitter");
+
+        mockMvc.perform(delete("/api/users/me")
+                        .header("Authorization", "Bearer " + me.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new WithdrawRequest(PASSWORD, "이제 안 써요"))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("quit@hola.com", PASSWORD))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("회원 탈퇴 실패 — 비밀번호가 틀리면 401")
+    void withdraw_wrongPassword_returns401() throws Exception {
+        TestUser me = register("quit@hola.com", "quitter");
+
+        mockMvc.perform(delete("/api/users/me")
+                        .header("Authorization", "Bearer " + me.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new WithdrawRequest("wrongpassword", null))))
+                .andExpect(status().isUnauthorized());
     }
 
     // ===== helpers =====

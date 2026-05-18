@@ -2,6 +2,9 @@ package com.holaclimbing.server.domain.user;
 
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
+import com.holaclimbing.server.domain.user.dto.request.LogoutRequest;
+import com.holaclimbing.server.domain.user.dto.request.PasswordResetEmailRequest;
+import com.holaclimbing.server.domain.user.dto.request.PasswordResetRequest;
 import com.holaclimbing.server.domain.user.dto.request.RefreshRequest;
 import com.holaclimbing.server.domain.user.dto.request.ResendVerificationRequest;
 import com.holaclimbing.server.domain.user.dto.request.SignupRequest;
@@ -14,12 +17,14 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,6 +64,26 @@ public class AuthController {
         return ApiResponse.success();
     }
 
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(
+            @RequestHeader(name = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
+            @Valid @RequestBody LogoutRequest request) {
+        userService.logout(stripBearer(authHeader), request.refreshToken());
+        return ApiResponse.success();
+    }
+
+    @PostMapping("/password/reset-request")
+    public ApiResponse<Void> requestPasswordReset(@Valid @RequestBody PasswordResetEmailRequest request) {
+        userService.requestPasswordReset(request.email());
+        return ApiResponse.success();
+    }
+
+    @PostMapping("/password/reset")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
+        userService.resetPassword(request.token(), request.newPassword());
+        return ApiResponse.success();
+    }
+
     @PostMapping("/resend-verification")
     public ApiResponse<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
         userService.resendVerification(request.email());
@@ -73,5 +98,12 @@ public class AuthController {
     @GetMapping("/nickname-check")
     public ApiResponse<AvailabilityResponse> checkNickname(@RequestParam @NotBlank String nickname) {
         return ApiResponse.success(new AvailabilityResponse(userService.isNicknameAvailable(nickname)));
+    }
+
+    private static String stripBearer(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring("Bearer ".length());
+        }
+        return authHeader;
     }
 }

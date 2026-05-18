@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.TestcontainersConfiguration;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
+import com.holaclimbing.server.domain.user.dto.request.LogoutRequest;
+import com.holaclimbing.server.domain.user.dto.request.PasswordResetEmailRequest;
+import com.holaclimbing.server.domain.user.dto.request.PasswordResetRequest;
 import com.holaclimbing.server.domain.user.dto.request.RefreshRequest;
 import com.holaclimbing.server.domain.user.dto.request.ResendVerificationRequest;
 import com.holaclimbing.server.domain.user.dto.request.SignupRequest;
@@ -15,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
@@ -53,6 +57,9 @@ class UserAuthIntegrationTest {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private StringRedisTemplate redis;
 
     @Test
     @DisplayName("회원가입 성공 — 201, 미인증 상태로 저장되고 인증 토큰이 발급된다")
@@ -218,6 +225,62 @@ class UserAuthIntegrationTest {
 
         String secondToken = userMapper.findByEmail(EMAIL).getEmailVerificationToken();
         assertThat(secondToken).isNotBlank().isNotEqualTo(firstToken);
+    }
+
+    @Test
+    @DisplayName("로그아웃 — 블랙리스트 등록 후 같은 Access 토큰은 401로 거부된다")
+    void logout_blacklistsAccessToken() throws Exception {
+        signup(EMAIL, PASSWORD, NICKNAME).andExpect(status().isCreated());
+        verifyEmailOf(EMAIL);
+        var tokens = dataOf(login(EMAIL, PASSWORD).andExpect(status().isOk()));
+        String accessToken = tokens.path("access_token").asText();
+        String refreshToken = tokens.path("refresh_token").asText();
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LogoutRequest(refreshToken))))
+                .andExpect(status().isOk());
+
+        // 로그아웃된 토큰으로 보호 API 접근 시 필터가 401로 거부
+        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("비밀번호 재설정 — 재설정 후 새 비밀번호로 로그인된다")
+    void passwordReset_flow() throws Exception {
+        signup(EMAIL, PASSWORD, NICKNAME).andExpect(status().isCreated());
+        verifyEmailOf(EMAIL);
+
+        mockMvc.perform(post("/api/auth/password/reset-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new PasswordResetEmailRequest(EMAIL))))
+                .andExpect(status().isOk());
+
+        String resetToken = redis.keys("auth:pwreset:*").stream().findFirst()
+                .map(k -> k.substring("auth:pwreset:".length()))
+                .orElseThrow(() -> new AssertionError("재설정 토큰이 저장되지 않았습니다"));
+
+        mockMvc.perform(post("/api/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new PasswordResetRequest(resetToken, "newpassword456"))))
+                .andExpect(status().isOk());
+
+        login(EMAIL, "newpassword456").andExpect(status().isOk());
+        login(EMAIL, PASSWORD).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("비밀번호 재설정 실패 — 유효하지 않은 토큰은 400 U011")
+    void passwordReset_invalidToken_returns400() throws Exception {
+        mockMvc.perform(post("/api/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new PasswordResetRequest("bogus-token-xyz", "newpassword456"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("U011"));
     }
 
     // ===== helpers =====

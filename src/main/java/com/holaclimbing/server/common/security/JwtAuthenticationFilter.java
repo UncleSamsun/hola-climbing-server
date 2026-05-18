@@ -41,6 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
     private final ObjectMapper objectMapper;
+    private final TokenBlacklist tokenBlacklist;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -54,6 +55,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             if (!tokenProvider.isAccessToken(token)) {
+                sendError(response, ErrorCode.INVALID_TOKEN);
+                return;
+            }
+            if (tokenBlacklist.contains(tokenProvider.getJti(token))) {
+                log.debug("Blacklisted JWT (logged out)");
                 sendError(response, ErrorCode.INVALID_TOKEN);
                 return;
             }

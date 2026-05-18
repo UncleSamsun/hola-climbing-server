@@ -25,4 +25,10 @@ public class VerificationEmailSender {
         String verifyLink = baseUrl + "/verify-email?token=" + token;
         log.info("[이메일 인증] 수신자={} / 인증 링크={}", toEmail, verifyLink);
     }
+
+    public void sendPasswordReset(String toEmail, String token) {
+        // 프론트 재설정 페이지로 연결되는 링크. 페이지에서 POST /api/auth/password/reset로 검증한다.
+        String resetLink = baseUrl + "/reset-password?token=" + token;
+        log.info("[비밀번호 재설정] 수신자={} / 재설정 링크={}", toEmail, resetLink);
+    }
 }

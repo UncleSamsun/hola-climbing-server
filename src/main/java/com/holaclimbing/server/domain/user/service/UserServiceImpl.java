@@ -3,6 +3,7 @@ package com.holaclimbing.server.domain.user.service;
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
 import com.holaclimbing.server.common.security.JwtTokenProvider;
+import com.holaclimbing.server.common.security.TokenBlacklist;
 import com.holaclimbing.server.domain.user.domain.User;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
 import com.holaclimbing.server.domain.user.dto.request.SignupRequest;
@@ -10,14 +11,17 @@ import com.holaclimbing.server.domain.user.dto.response.SignupResponse;
 import com.holaclimbing.server.domain.user.dto.response.TokenResponse;
 import com.holaclimbing.server.domain.user.mapper.UserMapper;
 import com.holaclimbing.server.infrastructure.mail.VerificationEmailSender;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @Slf4j
@@ -25,10 +29,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
+    private static final String PWRESET_PREFIX = "auth:pwreset:";
+    private static final Duration PWRESET_TTL = Duration.ofMinutes(30);
+
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final VerificationEmailSender emailSender;
+    private final StringRedisTemplate redis;
+    private final TokenBlacklist tokenBlacklist;
 
     @Override
     @Transactional
@@ -85,6 +94,50 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         return issueTokens(user);
+    }
+
+    @Override
+    public void logout(String accessToken, String refreshToken) {
+        blacklist(accessToken);
+        blacklist(refreshToken);
+    }
+
+    private void blacklist(String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        try {
+            Claims claims = tokenProvider.parseClaims(token);
+            long remainingMs = claims.getExpiration().getTime() - System.currentTimeMillis();
+            tokenBlacklist.blacklist(claims.getId(), Duration.ofMillis(remainingMs));
+        } catch (JwtException | IllegalArgumentException e) {
+            // 만료·위변조 토큰은 이미 무효이므로 블랙리스트 등록 불필요.
+            log.debug("로그아웃 — 무효 토큰 무시: {}", e.getMessage());
+        }
+    }
+
+    @Override
+    public void requestPasswordReset(String email) {
+        User user = userMapper.findByEmail(email);
+        if (user == null) {
+            // 보안: 가입되지 않은 이메일도 동일한 응답을 준다.
+            return;
+        }
+        String token = UUID.randomUUID().toString().replace("-", "");
+        redis.opsForValue().set(PWRESET_PREFIX + token, String.valueOf(user.getId()), PWRESET_TTL);
+        emailSender.sendPasswordReset(email, token);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        String key = PWRESET_PREFIX + token;
+        String userId = redis.opsForValue().get(key);
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.INVALID_RESET_TOKEN);
+        }
+        userMapper.updatePassword(Long.valueOf(userId), passwordEncoder.encode(newPassword));
+        redis.delete(key);
     }
 
     @Override

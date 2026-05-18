@@ -16,6 +16,15 @@ public interface UserService {
     /** Refresh 토큰으로 토큰 재발급. */
     TokenResponse refresh(String refreshToken);
 
+    /** 로그아웃 — Access/Refresh 토큰을 블랙리스트에 등록한다. */
+    void logout(String accessToken, String refreshToken);
+
+    /** 비밀번호 재설정 메일 발송. 가입 여부와 무관하게 동일 응답. */
+    void requestPasswordReset(String email);
+
+    /** 재설정 토큰으로 새 비밀번호를 설정한다. */
+    void resetPassword(String token, String newPassword);
+
     /** 이메일 인증 토큰 확인 → 인증 완료 처리. */
     void verifyEmail(String token);
 

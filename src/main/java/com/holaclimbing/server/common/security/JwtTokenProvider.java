@@ -11,6 +11,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * JWT Access/Refresh 토큰 발급 + 파싱 + 검증 유틸.
@@ -50,6 +51,7 @@ public class JwtTokenProvider {
         Date expiry = new Date(now.getTime() + validity.toMillis());
 
         var builder = Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(userId))
                 .issuer(props.issuer())
                 .issuedAt(now)
@@ -73,6 +75,11 @@ public class JwtTokenProvider {
 
     public Long getUserId(String token) {
         return Long.parseLong(parseClaims(token).getSubject());
+    }
+
+    /** 토큰 식별자(jti). 블랙리스트 등록·조회에 사용. */
+    public String getJti(String token) {
+        return parseClaims(token).getId();
     }
 
     public boolean isAccessToken(String token) {

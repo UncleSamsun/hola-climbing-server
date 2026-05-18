@@ -13,6 +13,7 @@ import com.holaclimbing.server.domain.user.mapper.FollowMapper;
 import com.holaclimbing.server.domain.user.mapper.UserBlockMapper;
 import com.holaclimbing.server.domain.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final FollowMapper followMapper;
     private final UserBlockMapper userBlockMapper;
     private final NotificationService notificationService;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public MyProfileResponse getMyProfile(Long userId) {
@@ -124,6 +126,17 @@ public class UserProfileServiceImpl implements UserProfileService {
         List<UserSummaryResponse> content = userBlockMapper.findBlocked(blockerId, size, page * size)
                 .stream().map(UserSummaryResponse::from).toList();
         return PageResponse.of(content, page, size, total);
+    }
+
+    @Override
+    @Transactional
+    public void withdraw(Long userId, String password) {
+        User user = findActiveUser(userId);
+        if (user.getPasswordHash() == null
+                || !passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.PASSWORD_MISMATCH);
+        }
+        userMapper.softDelete(userId);
     }
 
     private User findActiveUser(Long userId) {

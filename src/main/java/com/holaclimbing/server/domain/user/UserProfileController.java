@@ -3,6 +3,7 @@ package com.holaclimbing.server.domain.user;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.user.dto.request.UpdateProfileRequest;
+import com.holaclimbing.server.domain.user.dto.request.WithdrawRequest;
 import com.holaclimbing.server.domain.user.dto.response.MyProfileResponse;
 import com.holaclimbing.server.domain.user.dto.response.UserProfileResponse;
 import com.holaclimbing.server.domain.user.dto.response.UserSummaryResponse;
@@ -44,6 +45,13 @@ public class UserProfileController {
     public ApiResponse<MyProfileResponse> updateMyProfile(@AuthenticationPrincipal Long userId,
                                                           @Valid @RequestBody UpdateProfileRequest request) {
         return ApiResponse.success(userProfileService.updateMyProfile(userId, request));
+    }
+
+    @DeleteMapping("/me")
+    public ApiResponse<Void> withdraw(@AuthenticationPrincipal Long userId,
+                                      @Valid @RequestBody WithdrawRequest request) {
+        userProfileService.withdraw(userId, request.password());
+        return ApiResponse.success();
     }
 
     @GetMapping("/me/blocks")

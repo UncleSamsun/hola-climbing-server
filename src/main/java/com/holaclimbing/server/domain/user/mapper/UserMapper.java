@@ -39,4 +39,10 @@ public interface UserMapper {
                       @Param("nickname") String nickname,
                       @Param("profileImage") String profileImage,
                       @Param("bio") String bio);
+
+    /** 비밀번호 해시 갱신. */
+    int updatePassword(@Param("id") Long id, @Param("passwordHash") String passwordHash);
+
+    /** 회원 탈퇴 — soft-delete (deleted_at 설정). */
+    int softDelete(Long id);
 }

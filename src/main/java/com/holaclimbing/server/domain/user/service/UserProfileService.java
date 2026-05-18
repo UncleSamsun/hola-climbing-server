@@ -37,4 +37,7 @@ public interface UserProfileService {
 
     /** 내가 차단한 사용자 목록. */
     PageResponse<UserSummaryResponse> getBlockedUsers(Long blockerId, int page, int size);
+
+    /** 회원 탈퇴 (soft-delete). 본인 확인용 비밀번호 검증 후 처리한다. */
+    void withdraw(Long userId, String password);
 }

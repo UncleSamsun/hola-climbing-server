@@ -73,4 +73,18 @@
         WHERE id = #{id} AND deleted_at IS NULL
     </update>
 
+    <update id="updatePassword">
+        UPDATE users
+        SET password_hash = #{passwordHash},
+            updated_at = NOW()
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
+    <update id="softDelete">
+        UPDATE users
+        SET deleted_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
 </mapper>
