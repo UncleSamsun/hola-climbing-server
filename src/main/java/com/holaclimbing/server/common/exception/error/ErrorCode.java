@@ -39,7 +39,8 @@ public enum ErrorCode {
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "알림을 찾을 수 없습니다."),
 
     // ===== 신고 F-09 (R) =====
-    ALREADY_REPORTED(HttpStatus.CONFLICT, "R001", "이미 신고한 대상입니다."),
+    SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "R001", "자기 자신의 콘텐츠는 신고할 수 없습니다."),
+    ALREADY_REPORTED(HttpStatus.CONFLICT, "R002", "이미 신고한 대상입니다."),
 
     // ===== 인프라 / 외부 시스템 (S) =====
     GCS_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "S001", "영상 업로드에 실패했습니다."),

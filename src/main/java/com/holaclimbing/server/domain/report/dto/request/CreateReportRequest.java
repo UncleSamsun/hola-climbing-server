@@ -7,13 +7,13 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 신고 등록 요청.
- * targetType: video | comment | user | gym | chat_message
- * reasonCode: spam | abuse | sexual | copyright | other
+ * targetType: video | comment | user
+ * category: obscene | copyright | abuse | spam | etc
  */
 public record CreateReportRequest(
         @NotBlank String targetType,
         @NotNull @Positive Long targetId,
-        @NotBlank String reasonCode,
-        @Size(max = 500) String reasonDetail
+        @NotBlank String category,
+        @Size(max = 500) String reason
 ) {
 }

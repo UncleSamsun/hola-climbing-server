@@ -6,6 +6,11 @@ import com.holaclimbing.server.domain.report.domain.Report;
 import com.holaclimbing.server.domain.report.dto.request.CreateReportRequest;
 import com.holaclimbing.server.domain.report.dto.response.ReportResponse;
 import com.holaclimbing.server.domain.report.mapper.ReportMapper;
+import com.holaclimbing.server.domain.user.mapper.UserMapper;
+import com.holaclimbing.server.domain.video.domain.Comment;
+import com.holaclimbing.server.domain.video.domain.Video;
+import com.holaclimbing.server.domain.video.mapper.CommentMapper;
+import com.holaclimbing.server.domain.video.mapper.VideoMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,12 +21,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
 
-    private static final Set<String> TARGET_TYPES =
-            Set.of("video", "comment", "user", "gym", "chat_message");
-    private static final Set<String> REASON_CODES =
-            Set.of("spam", "abuse", "sexual", "copyright", "other");
+    private static final Set<String> TARGET_TYPES = Set.of("video", "comment", "user");
+    private static final Set<String> CATEGORIES =
+            Set.of("obscene", "copyright", "abuse", "spam", "etc");
 
     private final ReportMapper reportMapper;
+    private final UserMapper userMapper;
+    private final VideoMapper videoMapper;
+    private final CommentMapper commentMapper;
 
     @Override
     @Transactional
@@ -29,8 +36,11 @@ public class ReportServiceImpl implements ReportService {
         if (!TARGET_TYPES.contains(request.targetType())) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "유효하지 않은 신고 대상 유형입니다.");
         }
-        if (!REASON_CODES.contains(request.reasonCode())) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "유효하지 않은 신고 사유입니다.");
+        if (!CATEGORIES.contains(request.category())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "유효하지 않은 신고 분류입니다.");
+        }
+        if (resolveTargetOwnerId(request.targetType(), request.targetId()).equals(reporterId)) {
+            throw new BusinessException(ErrorCode.SELF_REPORT_NOT_ALLOWED);
         }
         if (reportMapper.existsByReporterAndTarget(reporterId, request.targetType(), request.targetId())) {
             throw new BusinessException(ErrorCode.ALREADY_REPORTED);
@@ -39,10 +49,37 @@ public class ReportServiceImpl implements ReportService {
                 .reporterId(reporterId)
                 .targetType(request.targetType())
                 .targetId(request.targetId())
-                .reasonCode(request.reasonCode())
-                .reasonDetail(request.reasonDetail())
+                .category(request.category())
+                .reason(request.reason())
                 .build();
         reportMapper.insert(report);
-        return ReportResponse.of(reportMapper.findById(report.getId()));
+        return ReportResponse.of(report);
+    }
+
+    /** 신고 대상의 소유자 userId. 대상이 없으면 예외. */
+    private Long resolveTargetOwnerId(String targetType, Long targetId) {
+        return switch (targetType) {
+            case "user" -> {
+                if (userMapper.findById(targetId) == null) {
+                    throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+                }
+                yield targetId;
+            }
+            case "video" -> {
+                Video video = videoMapper.findById(targetId);
+                if (video == null) {
+                    throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+                }
+                yield video.getUserId();
+            }
+            case "comment" -> {
+                Comment comment = commentMapper.findById(targetId);
+                if (comment == null) {
+                    throw new BusinessException(ErrorCode.NOT_FOUND, "댓글을 찾을 수 없습니다.");
+                }
+                yield comment.getUserId();
+            }
+            default -> throw new BusinessException(ErrorCode.INVALID_INPUT, "유효하지 않은 신고 대상 유형입니다.");
+        };
     }
 }

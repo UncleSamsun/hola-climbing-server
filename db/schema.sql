@@ -289,10 +289,10 @@ CREATE INDEX idx_notif_recipient_unread  ON notifications(recipient_id) WHERE is
 CREATE TABLE reports (
     id              BIGSERIAL PRIMARY KEY,
     reporter_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    target_type     VARCHAR(30) NOT NULL,  -- 'video' | 'comment' | 'user' | 'gym' | 'chat_message'
+    target_type     VARCHAR(30) NOT NULL,  -- 'video' | 'comment' | 'user'
     target_id       BIGINT NOT NULL,
-    reason_code     VARCHAR(50) NOT NULL,  -- 'spam' | 'abuse' | 'sexual' | 'copyright' | 'other'
-    reason_detail   TEXT,
+    category        VARCHAR(50) NOT NULL,  -- 'obscene' | 'copyright' | 'abuse' | 'spam' | 'etc'
+    reason          TEXT,
     status          VARCHAR(20) NOT NULL DEFAULT 'pending',  -- 'pending' | 'reviewed' | 'resolved' | 'rejected'
     reviewed_by     BIGINT REFERENCES users(id),
     reviewed_at     TIMESTAMP,

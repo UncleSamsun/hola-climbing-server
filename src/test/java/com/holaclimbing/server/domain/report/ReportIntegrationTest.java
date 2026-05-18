@@ -51,32 +51,31 @@ class ReportIntegrationTest {
     private UserMapper userMapper;
 
     @Test
-    @DisplayName("신고 등록 성공 — 201, pending 상태로 저장된다")
+    @DisplayName("신고 등록 성공 — 201, reportId 반환")
     void createReport_success() throws Exception {
         String token = register("a@hola.com", "climberone");
+        long targetId = userId("victim@hola.com", "targetuser");
 
         mockMvc.perform(post("/api/reports")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new CreateReportRequest("video", 1L, "spam", "도배성 영상입니다"))))
+                                new CreateReportRequest("user", targetId, "spam", "스팸 계정입니다"))))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.id").isNumber())
-                .andExpect(jsonPath("$.data.status").value("pending"))
-                .andExpect(jsonPath("$.data.target_type").value("video"))
-                .andExpect(jsonPath("$.data.reason_code").value("spam"));
+                .andExpect(jsonPath("$.data.report_id").isNumber());
     }
 
     @Test
-    @DisplayName("신고 등록 — reason_detail 없이도 등록된다")
-    void createReport_withoutDetail_success() throws Exception {
+    @DisplayName("신고 등록 — reason 없이도 등록된다")
+    void createReport_withoutReason_success() throws Exception {
         String token = register("a@hola.com", "climberone");
+        long targetId = userId("victim@hola.com", "targetuser");
 
         mockMvc.perform(post("/api/reports")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new CreateReportRequest("user", 2L, "abuse", null))))
+                                new CreateReportRequest("user", targetId, "abuse", null))))
                 .andExpect(status().isCreated());
     }
 
@@ -86,16 +85,32 @@ class ReportIntegrationTest {
         mockMvc.perform(post("/api/reports")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new CreateReportRequest("video", 1L, "spam", null))))
+                                new CreateReportRequest("user", 1L, "spam", null))))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("신고 등록 실패 — 같은 대상 중복 신고는 409 R001")
+    @DisplayName("신고 등록 실패 — 자기 자신 신고는 400 R001")
+    void createReport_self_returns400() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        long myId = userMapper.findByEmail("a@hola.com").getId();
+
+        mockMvc.perform(post("/api/reports")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new CreateReportRequest("user", myId, "spam", null))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("R001"));
+    }
+
+    @Test
+    @DisplayName("신고 등록 실패 — 같은 대상 중복 신고는 409 R002")
     void createReport_duplicate_returns409() throws Exception {
         String token = register("a@hola.com", "climberone");
+        long targetId = userId("victim@hola.com", "targetuser");
         var body = objectMapper.writeValueAsString(
-                new CreateReportRequest("video", 1L, "spam", null));
+                new CreateReportRequest("user", targetId, "spam", null));
 
         mockMvc.perform(post("/api/reports")
                         .header("Authorization", "Bearer " + token)
@@ -105,7 +120,22 @@ class ReportIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("R001"));
+                .andExpect(jsonPath("$.code").value("R002"));
+    }
+
+    @Test
+    @DisplayName("신고 등록 실패 — 유효하지 않은 category는 400")
+    void createReport_invalidCategory_returns400() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        long targetId = userId("victim@hola.com", "targetuser");
+
+        mockMvc.perform(post("/api/reports")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new CreateReportRequest("user", targetId, "boring", null))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
     }
 
     @Test
@@ -123,20 +153,25 @@ class ReportIntegrationTest {
     }
 
     @Test
-    @DisplayName("신고 등록 실패 — 유효하지 않은 reasonCode는 400")
-    void createReport_invalidReasonCode_returns400() throws Exception {
+    @DisplayName("신고 등록 실패 — 없는 사용자 신고는 404 U001")
+    void createReport_targetUserNotFound_returns404() throws Exception {
         String token = register("a@hola.com", "climberone");
 
         mockMvc.perform(post("/api/reports")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new CreateReportRequest("video", 1L, "boring", null))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("C001"));
+                                new CreateReportRequest("user", 999999L, "spam", null))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("U001"));
     }
 
     // ===== helpers =====
+
+    private long userId(String email, String nickname) throws Exception {
+        register(email, nickname);
+        return userMapper.findByEmail(email).getId();
+    }
 
     /** 회원가입 → 이메일 인증 → 로그인까지 완료하고 accessToken을 반환. */
     private String register(String email, String nickname) throws Exception {

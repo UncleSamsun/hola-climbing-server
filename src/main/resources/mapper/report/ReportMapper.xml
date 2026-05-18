@@ -4,12 +4,12 @@
 
     <insert id="insert" parameterType="com.holaclimbing.server.domain.report.domain.Report"
             useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO reports (reporter_id, target_type, target_id, reason_code, reason_detail)
-        VALUES (#{reporterId}, #{targetType}, #{targetId}, #{reasonCode}, #{reasonDetail})
+        INSERT INTO reports (reporter_id, target_type, target_id, category, reason)
+        VALUES (#{reporterId}, #{targetType}, #{targetId}, #{category}, #{reason})
     </insert>
 
     <select id="findById" resultType="com.holaclimbing.server.domain.report.domain.Report">
-        SELECT id, reporter_id, target_type, target_id, reason_code, reason_detail,
+        SELECT id, reporter_id, target_type, target_id, category, reason,
                status, reviewed_by, reviewed_at, created_at
         FROM reports
         WHERE id = #{id}

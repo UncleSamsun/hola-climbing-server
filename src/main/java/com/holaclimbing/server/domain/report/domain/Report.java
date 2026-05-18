@@ -21,8 +21,8 @@ public class Report {
     private Long reporterId;
     private String targetType;
     private Long targetId;
-    private String reasonCode;
-    private String reasonDetail;
+    private String category;
+    private String reason;
     private String status;
     private Long reviewedBy;
     private LocalDateTime reviewedAt;
