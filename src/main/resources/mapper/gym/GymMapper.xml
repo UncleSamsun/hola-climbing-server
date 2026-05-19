@@ -65,4 +65,18 @@
         ORDER BY display_order, id
     </select>
 
+    <insert id="insertGym" parameterType="com.holaclimbing.server.domain.gym.domain.Gym"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO gyms (name, address, lat, lng, description, phone, website,
+                          region_code, status, created_by)
+        VALUES (#{name}, #{address}, #{lat}, #{lng}, #{description}, #{phone}, #{website},
+                #{regionCode}, #{status}, #{createdBy})
+    </insert>
+
+    <insert id="insertPhoto" parameterType="com.holaclimbing.server.domain.gym.domain.GymPhoto"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO gym_photos (gym_id, uploaded_by, gcs_path, caption, display_order)
+        VALUES (#{gymId}, #{uploadedBy}, #{gcsPath}, #{caption}, #{displayOrder})
+    </insert>
+
 </mapper>

@@ -30,4 +30,10 @@ public interface GymMapper {
 
     /** 암장 사진 목록 (display_order 순). */
     List<GymPhoto> findPhotosByGymId(Long gymId);
+
+    /** 암장 등록. 생성된 PK는 gym.id로 채워진다. */
+    void insertGym(Gym gym);
+
+    /** 암장 사진 등록. 생성된 PK는 photo.id로 채워진다. */
+    void insertPhoto(GymPhoto photo);
 }

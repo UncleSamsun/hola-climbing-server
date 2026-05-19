@@ -7,6 +7,9 @@ INSERT INTO gyms (id, name, address, lat, lng, region_code, rating_avg, rating_c
 (4, 'TheClimb Bundang',     'Gyeonggi Seongnam', 37.3825, 127.1189, 'gyeonggi', 4.30,  45, 'active'),
 (5, 'ClimbZone Busan',      'Busan Haeundae',    35.1796, 129.0756, 'busan',    4.00,  30, 'closed');
 
+-- 명시적 id로 INSERT했으므로 BIGSERIAL 시퀀스를 최댓값 뒤로 당겨 이후 INSERT 충돌을 막는다.
+SELECT setval('gyms_id_seq', (SELECT MAX(id) FROM gyms));
+
 INSERT INTO gym_photos (gym_id, gcs_path, caption, display_order) VALUES
 (1, 'gyms/1/photo-a.jpg', 'main wall',   0),
 (1, 'gyms/1/photo-b.jpg', 'boulder zone', 1);

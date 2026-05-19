@@ -1,7 +1,11 @@
 package com.holaclimbing.server.domain.gym.service;
 
 import com.holaclimbing.server.common.response.PageResponse;
+import com.holaclimbing.server.domain.gym.dto.request.CreateGymPhotoRequest;
+import com.holaclimbing.server.domain.gym.dto.request.CreateGymRequest;
+import com.holaclimbing.server.domain.gym.dto.response.CreateGymResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymDetailResponse;
+import com.holaclimbing.server.domain.gym.dto.response.GymPhotoResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymSummaryResponse;
 
 import java.util.List;
@@ -16,4 +20,13 @@ public interface GymService {
 
     /** 암장 상세 조회 (사진 포함). */
     GymDetailResponse getGymDetail(Long gymId);
+
+    /** 암장 등록 제안 (status='pending'으로 등록). */
+    CreateGymResponse suggestGym(Long userId, CreateGymRequest request);
+
+    /** 암장 사진 업로드. */
+    GymPhotoResponse uploadPhoto(Long userId, Long gymId, CreateGymPhotoRequest request);
+
+    /** 암장 사진 목록 조회. */
+    List<GymPhotoResponse> getPhotos(Long gymId);
 }

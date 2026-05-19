@@ -2,17 +2,27 @@ package com.holaclimbing.server.domain.gym;
 
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.common.response.PageResponse;
+import com.holaclimbing.server.domain.gym.dto.request.CreateGymPhotoRequest;
+import com.holaclimbing.server.domain.gym.dto.request.CreateGymRequest;
+import com.holaclimbing.server.domain.gym.dto.response.CreateGymResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymDetailResponse;
+import com.holaclimbing.server.domain.gym.dto.response.GymPhotoResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymSummaryResponse;
 import com.holaclimbing.server.domain.gym.service.GymService;
 import com.holaclimbing.server.domain.video.dto.response.VideoSummaryResponse;
 import com.holaclimbing.server.domain.video.service.VideoService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -60,5 +70,30 @@ public class GymController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Positive int size) {
         return ApiResponse.success(videoService.getGymVideos(gymId, page, size));
+    }
+
+    /** 암장 등록 제안 (인증 필요). status='pending'으로 등록된다. */
+    @PostMapping
+    public ResponseEntity<ApiResponse<CreateGymResponse>> suggestGym(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody CreateGymRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(gymService.suggestGym(userId, request)));
+    }
+
+    /** 암장 사진 업로드 (인증 필요). */
+    @PostMapping("/{gymId}/photos")
+    public ResponseEntity<ApiResponse<GymPhotoResponse>> uploadGymPhoto(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long gymId,
+            @Valid @RequestBody CreateGymPhotoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(gymService.uploadPhoto(userId, gymId, request)));
+    }
+
+    /** 암장 사진 목록 조회 (공개). */
+    @GetMapping("/{gymId}/photos")
+    public ApiResponse<List<GymPhotoResponse>> getGymPhotos(@PathVariable Long gymId) {
+        return ApiResponse.success(gymService.getPhotos(gymId));
     }
 }
