@@ -393,6 +393,23 @@ CREATE TABLE user_stats (
     updated_at              TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- 사용자가 직접 기록하는 클라이밍 로그 (달력 기능의 원천 데이터, F-03-03).
+-- climbed_on 기준 날짜는 Asia/Seoul(KST) 로컬 날짜로 클라이언트가 전달한다.
+CREATE TABLE climbing_logs (
+    id            BIGSERIAL PRIMARY KEY,
+    user_id       BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    gym_id        BIGINT NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+    climbed_on    DATE NOT NULL,
+    -- 난이도별 푼 문제 수: {"빨강": 3, "파랑": 5, ...}
+    grade_counts  JSONB NOT NULL DEFAULT '{}'::jsonb,
+    memo          TEXT,
+    created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at    TIMESTAMP
+);
+CREATE INDEX idx_climbing_logs_user_date ON climbing_logs(user_id, climbed_on)
+    WHERE deleted_at IS NULL;
+
 
 -- =====================================================================
 -- 10. INITIAL DATA

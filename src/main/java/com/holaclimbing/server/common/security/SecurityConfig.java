@@ -90,8 +90,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/terms/agree").authenticated()
                         // 채팅 REST — 본인 전용
                         .requestMatchers("/api/chats/**").authenticated()
-                        // 통계 — 내 통계는 인증 필요 (특정 사용자 통계는 공개)
+                        // 통계 — 내 통계·달력은 인증 필요 (특정 사용자 통계는 공개)
                         .requestMatchers(HttpMethod.GET, "/api/stats/me", "/api/stats/me/**").authenticated()
+                        // 클라이밍 기록 — 작성·조회·수정·삭제 모두 인증 필요
+                        .requestMatchers("/api/climbing-logs", "/api/climbing-logs/**").authenticated()
                         // 추천 — 본인 홈 피드
                         .requestMatchers("/api/recommendations/**").authenticated()
                         // AI 분석 — 조회 공개 + 결과 수신은 AI 워커 서버 간 콜백

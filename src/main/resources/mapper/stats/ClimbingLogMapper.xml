@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.holaclimbing.server.domain.stats.mapper.ClimbingLogMapper">
+
+    <!-- grade_counts(jsonb)는 String으로 주고받으며 서비스에서 직렬화/파싱한다. -->
+
+    <insert id="insert" parameterType="com.holaclimbing.server.domain.stats.domain.ClimbingLog"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO climbing_logs (user_id, gym_id, climbed_on, grade_counts, memo)
+        VALUES (#{userId}, #{gymId}, #{climbedOn}, #{gradeCounts}::jsonb, #{memo})
+    </insert>
+
+    <select id="findById" resultType="com.holaclimbing.server.domain.stats.domain.ClimbingLog">
+        SELECT id, user_id, gym_id, climbed_on, grade_counts, memo,
+               created_at, updated_at, deleted_at
+        FROM climbing_logs
+        WHERE id = #{id} AND deleted_at IS NULL
+    </select>
+
+    <select id="findByUserAndPeriod" resultType="com.holaclimbing.server.domain.stats.domain.ClimbingLog">
+        SELECT id, user_id, gym_id, climbed_on, grade_counts, memo,
+               created_at, updated_at, deleted_at
+        FROM climbing_logs
+        WHERE user_id = #{userId} AND deleted_at IS NULL
+          AND climbed_on BETWEEN #{from} AND #{to}
+        ORDER BY climbed_on DESC, id DESC
+    </select>
+
+    <select id="findByUserAndDate" resultType="com.holaclimbing.server.domain.stats.domain.ClimbingLog">
+        SELECT id, user_id, gym_id, climbed_on, grade_counts, memo,
+               created_at, updated_at, deleted_at
+        FROM climbing_logs
+        WHERE user_id = #{userId} AND deleted_at IS NULL
+          AND climbed_on = #{date}
+        ORDER BY id DESC
+    </select>
+
+    <update id="update">
+        UPDATE climbing_logs
+        SET gym_id = #{gymId}, climbed_on = #{climbedOn},
+            grade_counts = #{gradeCounts}::jsonb, memo = #{memo}, updated_at = NOW()
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
+    <update id="softDelete">
+        UPDATE climbing_logs
+        SET deleted_at = NOW(), updated_at = NOW()
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
+</mapper>

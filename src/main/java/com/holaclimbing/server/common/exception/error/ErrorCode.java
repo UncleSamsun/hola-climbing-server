@@ -46,6 +46,9 @@ public enum ErrorCode {
     SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "R001", "자기 자신의 콘텐츠는 신고할 수 없습니다."),
     ALREADY_REPORTED(HttpStatus.CONFLICT, "R002", "이미 신고한 대상입니다."),
 
+    // ===== 통계 / 클라이밍 기록 F-03 (T) =====
+    CLIMBING_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "T001", "클라이밍 기록을 찾을 수 없습니다."),
+
     // ===== 인프라 / 외부 시스템 (S) =====
     GCS_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "S001", "영상 업로드에 실패했습니다."),
     AI_SERVER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "S002", "AI 분석 서버에 연결할 수 없습니다.");
