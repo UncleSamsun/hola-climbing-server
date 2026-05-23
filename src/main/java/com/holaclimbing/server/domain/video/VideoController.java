@@ -14,14 +14,21 @@ import com.holaclimbing.server.domain.video.dto.response.VideoStatusResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoSummaryResponse;
 import com.holaclimbing.server.domain.video.service.CommentService;
 import com.holaclimbing.server.domain.video.service.VideoService;
+import com.holaclimbing.server.infrastructure.ai.AnalysisStatusStore;
+import com.holaclimbing.server.infrastructure.ai.VideoAnalysisSseService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,6 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 영상 피드·CRUD·좋아요·댓글 API.
  * 조회(GET)는 공개, 등록·수정·삭제·좋아요·댓글작성은 SecurityConfig에서 인증을 요구한다.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/videos")
 @RequiredArgsConstructor
@@ -44,6 +52,8 @@ public class VideoController {
 
     private final VideoService videoService;
     private final CommentService commentService;
+    private final VideoAnalysisSseService analysisSseService;
+    private final AnalysisStatusStore analysisStatusStore;
 
     @PostMapping("/upload-url")
     public ApiResponse<UploadUrlResponse> createUploadUrl(
@@ -91,6 +101,23 @@ public class VideoController {
     @GetMapping("/{videoId}/status")
     public ApiResponse<VideoStatusResponse> getStatus(@PathVariable Long videoId) {
         return ApiResponse.success(videoService.getStatus(videoId));
+    }
+
+    /**
+     * 분석 진행률 SSE 스트림. 연결 즉시 저장된 최신 상태(QUEUED/PROCESSING/COMPLETED/FAILED)를
+     * 1회 replay하고, 이후 Python 워커가 발행하는 진행 이벤트를 그대로 푸시한다.
+     */
+    @GetMapping(value = "/{videoId}/analysis/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamAnalysisProgress(@PathVariable Long videoId) {
+        SseEmitter emitter = analysisSseService.connect(videoId);
+        analysisStatusStore.find(videoId).ifPresent(progress -> {
+            try {
+                emitter.send(SseEmitter.event().name("progress").data(progress));
+            } catch (IOException e) {
+                log.debug("SSE 초기 replay 실패 — videoId={}", videoId);
+            }
+        });
+        return emitter;
     }
 
     @PostMapping("/{videoId}/like")

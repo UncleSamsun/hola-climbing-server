@@ -1,31 +1,73 @@
 package com.holaclimbing.server.infrastructure.ai;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
- * AnalysisDispatcher 단위 테스트 — fire-and-forget 회복력 검증.
+ * AnalysisDispatcher 단위 테스트 — 큐 적재와 상태 저장이 함께 일어나는지,
+ * 그리고 큐 실패가 호출자에 전파되지 않는지(fire-and-forget) 검증.
  */
 class AnalysisDispatcherTest {
 
-    @Test
-    @DisplayName("ai.analysis-url 미설정 시 디스패치는 아무 동작 없이 통과한다")
-    void dispatch_whenUrlBlank_isNoOp() {
-        AnalysisDispatcher dispatcher = new AnalysisDispatcher("", "http://localhost:8080");
+    private List<AnalysisJob> enqueued;
+    private Map<Long, AnalysisProgress> saved;
+    private AnalysisDispatcher dispatcher;
 
-        assertThatNoException()
-                .isThrownBy(() -> dispatcher.dispatch(1L, "videos/uploads/1/clip.mp4"));
+    @BeforeEach
+    void setUp() {
+        enqueued = new ArrayList<>();
+        saved = new HashMap<>();
+
+        AnalysisJobQueue queue = enqueued::add;
+        AnalysisStatusStore store = new AnalysisStatusStore(null, null) {
+            @Override
+            public void save(AnalysisProgress progress) {
+                saved.put(progress.videoId(), progress);
+            }
+
+            @Override
+            public Optional<AnalysisProgress> find(Long videoId) {
+                return Optional.ofNullable(saved.get(videoId));
+            }
+        };
+        dispatcher = new AnalysisDispatcher(queue, store);
+        ReflectionTestUtils.setField(dispatcher, "baseUrl", "http://localhost:8080");
     }
 
     @Test
-    @DisplayName("워커에 연결할 수 없어도 예외를 삼키고 통과한다 (영상 등록에 영향 없음)")
-    void dispatch_whenWorkerUnreachable_swallowsError() {
-        AnalysisDispatcher dispatcher = new AnalysisDispatcher(
-                "http://localhost:59999/analyze", "http://localhost:8080");
+    @DisplayName("dispatch — 큐에 적재하고 상태를 QUEUED로 기록한다")
+    void dispatch_enqueuesAndMarksQueued() {
+        dispatcher.dispatch(42L, "videos/uploads/42/clip.mp4");
+
+        assertThat(enqueued).hasSize(1);
+        assertThat(enqueued.get(0).videoId()).isEqualTo(42L);
+        assertThat(enqueued.get(0).callbackUrl()).isEqualTo("http://localhost:8080/api/analysis/videos/42");
+        assertThat(saved.get(42L).stage()).isEqualTo(AnalysisStage.QUEUED);
+    }
+
+    @Test
+    @DisplayName("큐 적재 실패 시에도 예외를 삼키고 통과한다 (영상 등록에 영향 없음)")
+    void dispatch_whenQueueFails_swallowsError() {
+        AnalysisJobQueue failingQueue = job -> {
+            throw new RuntimeException("redis down");
+        };
+        AnalysisDispatcher failing = new AnalysisDispatcher(failingQueue, new AnalysisStatusStore(null, null) {
+            @Override public void save(AnalysisProgress progress) {}
+        });
+        ReflectionTestUtils.setField(failing, "baseUrl", "http://localhost:8080");
 
         assertThatNoException()
-                .isThrownBy(() -> dispatcher.dispatch(1L, "videos/uploads/1/clip.mp4"));
+                .isThrownBy(() -> failing.dispatch(1L, "videos/uploads/1/clip.mp4"));
     }
 }

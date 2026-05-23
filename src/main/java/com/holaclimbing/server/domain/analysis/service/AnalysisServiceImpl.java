@@ -12,6 +12,9 @@ import com.holaclimbing.server.domain.analysis.mapper.AnalysisMapper;
 import com.holaclimbing.server.domain.video.domain.Video;
 import com.holaclimbing.server.domain.video.mapper.VideoMapper;
 import com.holaclimbing.server.infrastructure.ai.AnalysisDispatcher;
+import com.holaclimbing.server.infrastructure.ai.AnalysisProgress;
+import com.holaclimbing.server.infrastructure.ai.AnalysisProgressBus;
+import com.holaclimbing.server.infrastructure.ai.AnalysisStage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +32,7 @@ public class AnalysisServiceImpl implements AnalysisService {
     private final AnalysisMapper analysisMapper;
     private final VideoMapper videoMapper;
     private final AnalysisDispatcher analysisDispatcher;
+    private final AnalysisProgressBus progressBus;
 
     @Override
     public VideoAnalysisResponse getAnalysis(Long videoId) {
@@ -54,6 +58,10 @@ public class AnalysisServiceImpl implements AnalysisService {
             }
         }
         videoMapper.updateStatus(videoId, status);
+        // SSE·상태 저장소가 종료 이벤트를 보도록 동일 채널로 게시.
+        progressBus.publish(AnalysisProgress.of(videoId,
+                STATUS_DONE.equals(status) ? AnalysisStage.COMPLETED : AnalysisStage.FAILED,
+                STATUS_DONE.equals(status) ? "분석 완료" : "분석 실패"));
         return getAnalysis(videoId);
     }
 

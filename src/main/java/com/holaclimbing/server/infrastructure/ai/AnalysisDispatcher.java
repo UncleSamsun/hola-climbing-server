@@ -1,51 +1,36 @@
 package com.holaclimbing.server.infrastructure.ai;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 
 /**
- * 영상 등록 시 AI 워커(Python)에 분석을 요청하는 아웃바운드 디스패처.
- * fire-and-forget — 워커 호출 실패는 영상 등록에 영향을 주지 않으며,
- * 실패 시 영상은 pending으로 남아 재시도 여지를 둔다.
- * ai.analysis-url이 비어 있으면(개발 환경 등) 디스패치를 건너뛴다.
+ * 영상 등록 시 AI 워커(Python)에 분석을 요청하는 디스패처.
+ *
+ * <p>이전에는 HTTP POST로 직접 호출했으나, 운영 안정성과 다중 인스턴스 fan-out을 위해
+ * Redis Streams 기반 작업 큐로 전환했다. 큐 적재 직후 상태 저장소에 QUEUED 상태를
+ * 기록해 SSE·폴링이 즉시 초기 상태를 볼 수 있다.
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class AnalysisDispatcher {
 
-    private final RestClient restClient = RestClient.create();
-    private final String analysisUrl;
-    private final String baseUrl;
+    private final AnalysisJobQueue jobQueue;
+    private final AnalysisStatusStore statusStore;
 
-    public AnalysisDispatcher(@Value("${ai.analysis-url:}") String analysisUrl,
-                              @Value("${app.base-url}") String baseUrl) {
-        this.analysisUrl = analysisUrl;
-        this.baseUrl = baseUrl;
-    }
+    @Value("${app.base-url}")
+    private String baseUrl;
 
-    /** 영상 분석 요청을 워커로 전송한다. 비동기 — 호출자는 결과를 기다리지 않는다. */
-    @Async
+    /** 분석 요청을 큐에 적재하고 상태를 QUEUED로 표기한다. */
     public void dispatch(Long videoId, String gcsPath) {
-        if (analysisUrl == null || analysisUrl.isBlank()) {
-            log.info("AI 분석 디스패치 건너뜀 (ai.analysis-url 미설정) — videoId={}", videoId);
-            return;
-        }
-        AnalysisDispatchPayload payload = new AnalysisDispatchPayload(
-                videoId, gcsPath, baseUrl + "/api/analysis/videos/" + videoId);
+        String callbackUrl = baseUrl + "/api/analysis/videos/" + videoId;
         try {
-            restClient.post()
-                    .uri(analysisUrl)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(payload)
-                    .retrieve()
-                    .toBodilessEntity();
-            log.info("AI 분석 디스패치 완료 — videoId={}", videoId);
+            jobQueue.enqueue(new AnalysisJob(videoId, gcsPath, callbackUrl));
+            statusStore.save(AnalysisProgress.of(videoId, AnalysisStage.QUEUED, "분석 대기열에 등록됨"));
         } catch (Exception e) {
-            log.warn("AI 분석 디스패치 실패 — videoId={} (영상은 pending 유지): {}", videoId, e.getMessage());
+            log.warn("AI 분석 디스패치 실패 — videoId={}: {}", videoId, e.getMessage());
         }
     }
 }
