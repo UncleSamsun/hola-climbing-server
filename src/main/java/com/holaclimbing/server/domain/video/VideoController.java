@@ -8,6 +8,7 @@ import com.holaclimbing.server.domain.video.dto.request.UpdateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UploadUrlRequest;
 import com.holaclimbing.server.domain.video.dto.response.CommentResponse;
 import com.holaclimbing.server.domain.video.dto.response.LikeResponse;
+import com.holaclimbing.server.domain.video.dto.response.ShareLinkResponse;
 import com.holaclimbing.server.domain.video.dto.response.UploadUrlResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoDetailResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoStatusResponse;
@@ -130,6 +131,13 @@ public class VideoController {
     public ApiResponse<LikeResponse> unlikeVideo(@AuthenticationPrincipal Long userId,
                                                  @PathVariable Long videoId) {
         return ApiResponse.success(videoService.unlikeVideo(userId, videoId));
+    }
+
+    /** 영상 공유 링크 발급 (F-02-08). 공개 영상은 누구나, 비공개는 소유자만. */
+    @PostMapping("/{videoId}/share")
+    public ApiResponse<ShareLinkResponse> shareVideo(@AuthenticationPrincipal Long userId,
+                                                     @PathVariable Long videoId) {
+        return ApiResponse.success(videoService.createShareLink(userId, videoId));
     }
 
     @PostMapping("/{videoId}/comments")

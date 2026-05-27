@@ -11,6 +11,7 @@ import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UpdateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UploadUrlRequest;
 import com.holaclimbing.server.domain.video.dto.response.LikeResponse;
+import com.holaclimbing.server.domain.video.dto.response.ShareLinkResponse;
 import com.holaclimbing.server.domain.video.dto.response.UploadUrlResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoDetailResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoStatusResponse;
@@ -21,6 +22,7 @@ import com.holaclimbing.server.infrastructure.ai.AnalysisDispatcher;
 import com.holaclimbing.server.infrastructure.gcs.GcsProperties;
 import com.holaclimbing.server.infrastructure.gcs.GcsStorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,9 @@ public class VideoServiceImpl implements VideoService {
     private final GcsProperties gcsProperties;
     private final VideoUploadProperties uploadProperties;
     private final AnalysisDispatcher analysisDispatcher;
+
+    @Value("${app.frontend-base-url}")
+    private String frontendBaseUrl;
 
     @Override
     public UploadUrlResponse createUploadUrl(Long userId, UploadUrlRequest request) {
@@ -165,6 +170,17 @@ public class VideoServiceImpl implements VideoService {
             videoMapper.decrementLikeCount(videoId);
         }
         return new LikeResponse(false, videoMapper.findById(videoId).getLikeCount());
+    }
+
+    @Override
+    public ShareLinkResponse createShareLink(Long viewerId, Long videoId) {
+        Video video = findActiveVideo(videoId);
+        // 비공개 영상은 소유자만 공유 링크 발급 가능 (URL 자체는 누구나 만들 수 있지만, 명세 일관성 위해 제한)
+        if (!video.isPublic() && !video.getUserId().equals(viewerId)) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_ACCESSIBLE);
+        }
+        String shareUrl = frontendBaseUrl + "/videos/" + videoId;
+        return new ShareLinkResponse(shareUrl);
     }
 
     private VideoDetailResponse toDetail(Video video, boolean isLiked) {

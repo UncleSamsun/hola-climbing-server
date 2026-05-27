@@ -397,6 +397,53 @@ class VideoIntegrationTest {
                 .andExpect(jsonPath("$.data.total_elements").value(2));
     }
 
+    @Test
+    @DisplayName("영상 공유 — 공개 영상은 인증 사용자 누구나 share URL을 받는다 (F-02-08)")
+    void shareVideo_publicVideo_success() throws Exception {
+        String owner = register("a@hola.com", "climberone");
+        String other = register("b@hola.com", "climbertwo");
+        long videoId = createVideo(owner, true);
+
+        mockMvc.perform(post("/api/videos/" + videoId + "/share")
+                        .header("Authorization", "Bearer " + other))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.share_url").value(org.hamcrest.Matchers.endsWith("/videos/" + videoId)));
+    }
+
+    @Test
+    @DisplayName("영상 공유 — 비공개 영상은 소유자만 share URL 발급, 타인은 403 V006")
+    void shareVideo_privateVideo_accessControl() throws Exception {
+        String owner = register("a@hola.com", "climberone");
+        String other = register("b@hola.com", "climbertwo");
+        long videoId = createVideo(owner, false);
+
+        mockMvc.perform(post("/api/videos/" + videoId + "/share")
+                        .header("Authorization", "Bearer " + owner))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.share_url").exists());
+        mockMvc.perform(post("/api/videos/" + videoId + "/share")
+                        .header("Authorization", "Bearer " + other))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("V006"));
+    }
+
+    @Test
+    @DisplayName("영상 공유 — 토큰 없이 호출하면 401")
+    void shareVideo_withoutToken_returns401() throws Exception {
+        mockMvc.perform(post("/api/videos/1/share"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("영상 공유 — 없는 영상은 404 V001")
+    void shareVideo_nonexistentVideo_returns404() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        mockMvc.perform(post("/api/videos/999999/share")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("V001"));
+    }
+
     // ===== helpers =====
 
     private CreateVideoRequest videoRequest(boolean isPublic) {

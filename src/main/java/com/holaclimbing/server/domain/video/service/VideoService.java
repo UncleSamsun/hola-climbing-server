@@ -5,6 +5,7 @@ import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UpdateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UploadUrlRequest;
 import com.holaclimbing.server.domain.video.dto.response.LikeResponse;
+import com.holaclimbing.server.domain.video.dto.response.ShareLinkResponse;
 import com.holaclimbing.server.domain.video.dto.response.UploadUrlResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoDetailResponse;
 import com.holaclimbing.server.domain.video.dto.response.VideoStatusResponse;
@@ -41,4 +42,7 @@ public interface VideoService {
 
     /** 영상 좋아요 취소. */
     LikeResponse unlikeVideo(Long userId, Long videoId);
+
+    /** 영상 공유 링크 발급. 공개 영상은 누구나, 비공개는 소유자만. */
+    ShareLinkResponse createShareLink(Long viewerId, Long videoId);
 }
