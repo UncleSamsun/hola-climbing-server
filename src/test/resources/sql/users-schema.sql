@@ -3,6 +3,7 @@
 -- 별도 인덱스를 제외한 버전 — plain postgres 컨테이너에서 동작하도록 함.
 -- terms_versions/user_term_agreements도 포함 — 회원가입이 약관 검증을 수행하므로
 -- signup을 호출하는 모든 통합 테스트에서 약관 테이블이 존재해야 한다.
+DROP TABLE IF EXISTS device_tokens CASCADE;
 DROP TABLE IF EXISTS user_term_agreements CASCADE;
 DROP TABLE IF EXISTS terms_versions CASCADE;
 DROP TABLE IF EXISTS user_blocks CASCADE;
@@ -69,4 +70,14 @@ CREATE TABLE user_term_agreements (
     agreed          BOOLEAN NOT NULL,
     agreed_at       TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, term_version_id)
+);
+
+-- FCM 디바이스 토큰. 영상 분석 완료/실패 푸시 알림 대상.
+CREATE TABLE device_tokens (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token           VARCHAR(500) NOT NULL UNIQUE,
+    platform        VARCHAR(20) NOT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );

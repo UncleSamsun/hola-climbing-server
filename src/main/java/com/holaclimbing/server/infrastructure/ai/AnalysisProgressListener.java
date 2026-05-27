@@ -8,7 +8,8 @@ import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.stereotype.Component;
 
 /**
- * `analysis:progress` 구독자. 진행 이벤트를 받으면 상태 저장소를 갱신하고 SSE로 fan-out한다.
+ * `analysis:progress` 구독자. 진행 이벤트를 받으면 상태 저장소를 갱신하고, SSE로 fan-out하며,
+ * terminal 단계(COMPLETED/FAILED)에는 FCM 푸시를 전송한다.
  * 같은 Spring 클러스터 내 모든 인스턴스가 동일 메시지를 수신하므로, 각 인스턴스가 보유한 SSE
  * emitter에 push할 수 있다.
  */
@@ -20,6 +21,7 @@ public class AnalysisProgressListener implements MessageListener {
     private final ObjectMapper objectMapper;
     private final AnalysisStatusStore statusStore;
     private final VideoAnalysisSseService sseService;
+    private final AnalysisCompletionNotifier completionNotifier;
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
@@ -27,6 +29,7 @@ public class AnalysisProgressListener implements MessageListener {
             AnalysisProgress progress = objectMapper.readValue(message.getBody(), AnalysisProgress.class);
             statusStore.save(progress);
             sseService.broadcast(progress);
+            completionNotifier.notifyIfTerminal(progress);
         } catch (Exception e) {
             log.warn("진행 이벤트 처리 실패: {}", e.getMessage());
         }

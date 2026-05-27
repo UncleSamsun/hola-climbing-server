@@ -137,6 +137,14 @@
 			<version>2.43.2</version>
 		</dependency>
 
+		<!-- Firebase Admin SDK: FCM 푸시 알림 전송
+             app.fcm.enabled=true + 서비스 계정 키 설정 시에만 활성화됨 -->
+		<dependency>
+			<groupId>com.google.firebase</groupId>
+			<artifactId>firebase-admin</artifactId>
+			<version>9.4.3</version>
+		</dependency>
+
 
 		<!-- ========== 개발 편의 ========== -->
 
