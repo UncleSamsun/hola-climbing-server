@@ -1,5 +1,6 @@
 package com.holaclimbing.server.infrastructure.gcs;
 
+import com.google.auth.ServiceAccountSigner;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.HttpMethod;
@@ -10,18 +11,28 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * GCS v4 Signed URL 발급.
  * 영상 바이너리는 Spring을 거치지 않고 클라이언트가 GCS와 직접 주고받는다.
+ *
+ * <p>Storage 클라이언트와 서명자(ServiceAccountSigner)는 분리해서 받는다.
+ * 테스트에선 Storage가 NoCredentials로 fake-gcs-server를 치고, 서명만 별도로 생성한 SA로 한다.
+ * 운영에선 둘 다 ApplicationDefaultCredentials에서 유도된 같은 자격증명을 사용한다.</p>
  */
 @Service
 @RequiredArgsConstructor
 public class GcsStorageService {
 
+    /** google-cloud-storage가 기본으로 사용하는 GCS 엔드포인트. 이 값이 그대로면 운영 환경으로 본다. */
+    private static final String DEFAULT_GCS_HOST = "https://storage.googleapis.com";
+
     private final Storage storage;
     private final GcsProperties properties;
+    private final ServiceAccountSigner signer;
 
     /**
      * 클라이언트가 PUT으로 직접 업로드할 Signed URL.
@@ -32,11 +43,15 @@ public class GcsStorageService {
             BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(properties.bucket(), objectPath))
                     .setContentType(contentType)
                     .build();
-            URL url = storage.signUrl(blobInfo, properties.signedUrlMinutes(), TimeUnit.MINUTES,
+            List<Storage.SignUrlOption> opts = new ArrayList<>(List.of(
                     Storage.SignUrlOption.httpMethod(HttpMethod.PUT),
                     Storage.SignUrlOption.withContentType(),
-                    Storage.SignUrlOption.withV4Signature());
-            return url.toString();
+                    Storage.SignUrlOption.withV4Signature(),
+                    Storage.SignUrlOption.signWith(signer)));
+            applyCustomHostName(opts);
+            URL url = storage.signUrl(blobInfo, properties.signedUrlMinutes(), TimeUnit.MINUTES,
+                    opts.toArray(new Storage.SignUrlOption[0]));
+            return normalizeSchemeForCustomHost(url.toString());
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.GCS_UPLOAD_FAILED);
         }
@@ -49,11 +64,40 @@ public class GcsStorageService {
         }
         try {
             BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(properties.bucket(), objectPath)).build();
+            List<Storage.SignUrlOption> opts = new ArrayList<>(List.of(
+                    Storage.SignUrlOption.withV4Signature(),
+                    Storage.SignUrlOption.signWith(signer)));
+            applyCustomHostName(opts);
             URL url = storage.signUrl(blobInfo, properties.signedUrlMinutes(), TimeUnit.MINUTES,
-                    Storage.SignUrlOption.withV4Signature());
-            return url.toString();
+                    opts.toArray(new Storage.SignUrlOption[0]));
+            return normalizeSchemeForCustomHost(url.toString());
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.GCS_UPLOAD_FAILED);
         }
+    }
+
+    /**
+     * Storage 클라이언트가 기본 GCS 호스트가 아닌 다른 엔드포인트로 설정돼 있으면
+     * (테스트의 fake-gcs-server 등) 그 호스트를 Signed URL에도 박아 넣는다.
+     * 그래야 PUT/GET이 실제로 그 엔드포인트로 향한다.
+     */
+    private void applyCustomHostName(List<Storage.SignUrlOption> opts) {
+        String host = storage.getOptions().getHost();
+        if (host != null && !DEFAULT_GCS_HOST.equals(host)) {
+            opts.add(Storage.SignUrlOption.withHostName(host));
+        }
+    }
+
+    /**
+     * google-cloud-storage SDK는 v4 Signed URL의 스킴을 항상 https://로 박아 넣는다.
+     * 운영(기본 호스트)에선 그게 맞지만, 평문 http로 떠 있는 fake-gcs-server에 대해선
+     * 발급된 URL을 그대로 쓰면 SSL 핸드셰이크에서 깨진다. host 스킴이 http면 동일하게 맞춰준다.
+     */
+    private String normalizeSchemeForCustomHost(String signedUrl) {
+        String host = storage.getOptions().getHost();
+        if (host != null && host.startsWith("http://") && signedUrl.startsWith("https://")) {
+            return "http://" + signedUrl.substring("https://".length());
+        }
+        return signedUrl;
     }
 }
