@@ -96,8 +96,8 @@ class GymManageIntegrationTest {
                                 new CreateGymPhotoRequest("gyms/1/photo-c.jpg", "새 사진", 2))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").isNumber())
-                .andExpect(jsonPath("$.data.gcs_path").value("gyms/1/photo-c.jpg"))
-                .andExpect(jsonPath("$.data.display_order").value(2));
+                .andExpect(jsonPath("$.data.gcsPath").value("gyms/1/photo-c.jpg"))
+                .andExpect(jsonPath("$.data.displayOrder").value(2));
 
         mockMvc.perform(get("/api/gyms/1/photos"))
                 .andExpect(status().isOk())
@@ -124,7 +124,7 @@ class GymManageIntegrationTest {
         mockMvc.perform(get("/api/gyms/1/photos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
-                .andExpect(jsonPath("$.data[0].display_order").value(0));
+                .andExpect(jsonPath("$.data[0].displayOrder").value(0));
     }
 
     @Test
@@ -132,10 +132,10 @@ class GymManageIntegrationTest {
     void getGymDetail_includesBusinessHours() throws Exception {
         mockMvc.perform(get("/api/gyms/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.business_hours.mon.open").value("06:00"))
-                .andExpect(jsonPath("$.data.business_hours.mon.close").value("23:00"))
-                .andExpect(jsonPath("$.data.business_hours.sat.open").value("09:00"))
-                .andExpect(jsonPath("$.data.business_hours.sun").doesNotExist());
+                .andExpect(jsonPath("$.data.businessHours.mon.open").value("06:00"))
+                .andExpect(jsonPath("$.data.businessHours.mon.close").value("23:00"))
+                .andExpect(jsonPath("$.data.businessHours.sat.open").value("09:00"))
+                .andExpect(jsonPath("$.data.businessHours.sun").doesNotExist());
     }
 
     @Test
@@ -150,11 +150,11 @@ class GymManageIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.business_hours.mon.open").value("07:00"))
-                .andExpect(jsonPath("$.data.business_hours.sat.close").value("20:00"));
+                .andExpect(jsonPath("$.data.businessHours.mon.open").value("07:00"))
+                .andExpect(jsonPath("$.data.businessHours.sat.close").value("20:00"));
 
         mockMvc.perform(get("/api/gyms/1"))
-                .andExpect(jsonPath("$.data.business_hours.mon.open").value("07:00"));
+                .andExpect(jsonPath("$.data.businessHours.mon.open").value("07:00"));
     }
 
     @Test
@@ -197,7 +197,7 @@ class GymManageIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private JsonNode dataOf(ResultActions actions) throws Exception {

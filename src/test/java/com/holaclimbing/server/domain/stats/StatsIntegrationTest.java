@@ -63,11 +63,11 @@ class StatsIntegrationTest {
 
         mockMvc.perform(get("/api/stats/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.user_id").value(userId))
-                .andExpect(jsonPath("$.data.total_videos").value(5))
-                .andExpect(jsonPath("$.data.total_climbing_seconds").value(1200))
-                .andExpect(jsonPath("$.data.technique_counts.highstep").value(12))
-                .andExpect(jsonPath("$.data.technique_counts.flagging").value(8));
+                .andExpect(jsonPath("$.data.userId").value(userId))
+                .andExpect(jsonPath("$.data.totalVideos").value(5))
+                .andExpect(jsonPath("$.data.totalClimbingSeconds").value(1200))
+                .andExpect(jsonPath("$.data.techniqueCounts.highstep").value(12))
+                .andExpect(jsonPath("$.data.techniqueCounts.flagging").value(8));
     }
 
     @Test
@@ -77,9 +77,9 @@ class StatsIntegrationTest {
 
         mockMvc.perform(get("/api/stats/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_videos").value(0))
-                .andExpect(jsonPath("$.data.total_climbing_seconds").value(0))
-                .andExpect(jsonPath("$.data.technique_counts").isEmpty());
+                .andExpect(jsonPath("$.data.totalVideos").value(0))
+                .andExpect(jsonPath("$.data.totalClimbingSeconds").value(0))
+                .andExpect(jsonPath("$.data.techniqueCounts").isEmpty());
     }
 
     @Test
@@ -98,8 +98,8 @@ class StatsIntegrationTest {
 
         mockMvc.perform(get("/api/stats/users/" + userId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_videos").value(3))
-                .andExpect(jsonPath("$.data.technique_counts.dyno").value(4));
+                .andExpect(jsonPath("$.data.totalVideos").value(3))
+                .andExpect(jsonPath("$.data.techniqueCounts.dyno").value(4));
     }
 
     @Test
@@ -119,9 +119,9 @@ class StatsIntegrationTest {
 
         mockMvc.perform(get("/api/stats/me/techniques").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.technique_counts.highstep").value(12))
-                .andExpect(jsonPath("$.data.most_used").value("highstep"))
-                .andExpect(jsonPath("$.data.least_used").value("dyno"));
+                .andExpect(jsonPath("$.data.techniqueCounts.highstep").value(12))
+                .andExpect(jsonPath("$.data.mostUsed").value("highstep"))
+                .andExpect(jsonPath("$.data.leastUsed").value("dyno"));
     }
 
     @Test
@@ -152,7 +152,7 @@ class StatsIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private JsonNode dataOf(ResultActions actions) throws Exception {

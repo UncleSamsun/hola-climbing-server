@@ -36,7 +36,7 @@ class GymIntegrationTest {
     void searchGyms_noFilter_returnsActiveOnly() throws Exception {
         mockMvc.perform(get("/api/gyms"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(4))
+                .andExpect(jsonPath("$.data.totalElements").value(4))
                 .andExpect(jsonPath("$.data.content[0].id").value(3));
     }
 
@@ -45,7 +45,7 @@ class GymIntegrationTest {
     void searchGyms_byKeyword() throws Exception {
         mockMvc.perform(get("/api/gyms").param("keyword", "TheClimb"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(2));
+                .andExpect(jsonPath("$.data.totalElements").value(2));
     }
 
     @Test
@@ -53,7 +53,7 @@ class GymIntegrationTest {
     void searchGyms_byRegion() throws Exception {
         mockMvc.perform(get("/api/gyms").param("region", "gyeonggi"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(2));
+                .andExpect(jsonPath("$.data.totalElements").value(2));
     }
 
     @Test
@@ -61,7 +61,7 @@ class GymIntegrationTest {
     void searchGyms_closedExcluded() throws Exception {
         mockMvc.perform(get("/api/gyms").param("region", "busan"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(0));
     }
 
     @Test
@@ -70,8 +70,8 @@ class GymIntegrationTest {
         mockMvc.perform(get("/api/gyms").param("page", "0").param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content.length()").value(2))
-                .andExpect(jsonPath("$.data.total_elements").value(4))
-                .andExpect(jsonPath("$.data.has_next").value(true));
+                .andExpect(jsonPath("$.data.totalElements").value(4))
+                .andExpect(jsonPath("$.data.hasNext").value(true));
     }
 
     @Test
@@ -114,7 +114,7 @@ class GymIntegrationTest {
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.name").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.photos.length()").value(2))
-                .andExpect(jsonPath("$.data.photos[0].display_order").value(0));
+                .andExpect(jsonPath("$.data.photos[0].displayOrder").value(0));
     }
 
     @Test

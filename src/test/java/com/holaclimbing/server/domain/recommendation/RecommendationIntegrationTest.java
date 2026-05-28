@@ -69,7 +69,7 @@ class RecommendationIntegrationTest {
 
         mockMvc.perform(get("/api/recommendations/videos").header("Authorization", "Bearer " + viewer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(2))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
                 .andExpect(jsonPath("$.data.content[0].source").value("following"))
                 .andExpect(jsonPath("$.data.content[1].source").value("recommended"));
     }
@@ -82,7 +82,7 @@ class RecommendationIntegrationTest {
 
         mockMvc.perform(get("/api/recommendations/videos").header("Authorization", "Bearer " + viewer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(0));
     }
 
     @Test
@@ -119,7 +119,7 @@ class RecommendationIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private JsonNode dataOf(ResultActions actions) throws Exception {

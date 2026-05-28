@@ -68,7 +68,7 @@ class UserAuthIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code").value("OK"))
                 .andExpect(jsonPath("$.data.email").value(EMAIL))
-                .andExpect(jsonPath("$.data.email_verified").value(false));
+                .andExpect(jsonPath("$.data.emailVerified").value(false));
 
         var saved = userMapper.findByEmail(EMAIL);
         assertThat(saved).isNotNull();
@@ -134,9 +134,9 @@ class UserAuthIntegrationTest {
         verifyEmailOf(EMAIL);
 
         var data = dataOf(login(EMAIL, PASSWORD).andExpect(status().isOk()));
-        assertThat(data.path("access_token").asText()).isNotBlank();
-        assertThat(data.path("refresh_token").asText()).isNotBlank();
-        assertThat(data.path("token_type").asText()).isEqualTo("Bearer");
+        assertThat(data.path("accessToken").asText()).isNotBlank();
+        assertThat(data.path("refreshToken").asText()).isNotBlank();
+        assertThat(data.path("tokenType").asText()).isEqualTo("Bearer");
     }
 
     @Test
@@ -171,14 +171,14 @@ class UserAuthIntegrationTest {
     void refresh_success() throws Exception {
         signup(EMAIL, PASSWORD, NICKNAME).andExpect(status().isCreated());
         verifyEmailOf(EMAIL);
-        String refreshToken = dataOf(login(EMAIL, PASSWORD)).path("refresh_token").asText();
+        String refreshToken = dataOf(login(EMAIL, PASSWORD)).path("refreshToken").asText();
 
         var data = dataOf(mockMvc.perform(post("/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RefreshRequest(refreshToken))))
                 .andExpect(status().isOk()));
-        assertThat(data.path("access_token").asText()).isNotBlank();
-        assertThat(data.path("refresh_token").asText()).isNotBlank();
+        assertThat(data.path("accessToken").asText()).isNotBlank();
+        assertThat(data.path("refreshToken").asText()).isNotBlank();
     }
 
     @Test
@@ -186,7 +186,7 @@ class UserAuthIntegrationTest {
     void refresh_withAccessToken_returns401() throws Exception {
         signup(EMAIL, PASSWORD, NICKNAME).andExpect(status().isCreated());
         verifyEmailOf(EMAIL);
-        String accessToken = dataOf(login(EMAIL, PASSWORD)).path("access_token").asText();
+        String accessToken = dataOf(login(EMAIL, PASSWORD)).path("accessToken").asText();
 
         mockMvc.perform(post("/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -233,8 +233,8 @@ class UserAuthIntegrationTest {
         signup(EMAIL, PASSWORD, NICKNAME).andExpect(status().isCreated());
         verifyEmailOf(EMAIL);
         var tokens = dataOf(login(EMAIL, PASSWORD).andExpect(status().isOk()));
-        String accessToken = tokens.path("access_token").asText();
-        String refreshToken = tokens.path("refresh_token").asText();
+        String accessToken = tokens.path("accessToken").asText();
+        String refreshToken = tokens.path("refreshToken").asText();
 
         mockMvc.perform(post("/api/auth/logout")
                         .header("Authorization", "Bearer " + accessToken)

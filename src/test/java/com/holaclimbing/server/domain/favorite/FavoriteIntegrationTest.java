@@ -76,7 +76,7 @@ class FavoriteIntegrationTest {
 
         mockMvc.perform(get("/api/favorites/gyms").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(2))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
                 .andExpect(jsonPath("$.data.content.length()").value(2));
     }
 
@@ -124,7 +124,7 @@ class FavoriteIntegrationTest {
 
         mockMvc.perform(get("/api/favorites/gyms").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(0));
     }
 
     @Test
@@ -134,7 +134,7 @@ class FavoriteIntegrationTest {
 
         mockMvc.perform(get("/api/favorites/gyms").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(0))
+                .andExpect(jsonPath("$.data.totalElements").value(0))
                 .andExpect(jsonPath("$.data.content.length()").value(0));
     }
 
@@ -154,7 +154,7 @@ class FavoriteIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private JsonNode dataOf(ResultActions actions) throws Exception {

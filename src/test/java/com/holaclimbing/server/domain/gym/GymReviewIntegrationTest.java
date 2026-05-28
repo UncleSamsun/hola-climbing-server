@@ -68,7 +68,7 @@ class GymReviewIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").isNumber())
                 .andExpect(jsonPath("$.data.rating").value(5))
-                .andExpect(jsonPath("$.data.gym_id").value(1));
+                .andExpect(jsonPath("$.data.gymId").value(1));
     }
 
     @Test
@@ -118,7 +118,7 @@ class GymReviewIntegrationTest {
 
         mockMvc.perform(get("/api/gyms/1/reviews"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(1))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].rating").value(3));
     }
 
@@ -148,7 +148,7 @@ class GymReviewIntegrationTest {
         mockMvc.perform(delete("/api/gyms/reviews/" + reviewId).header("Authorization", "Bearer " + owner))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/gyms/1/reviews"))
-                .andExpect(jsonPath("$.data.total_elements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(0));
     }
 
     // ===== helpers =====
@@ -167,7 +167,7 @@ class GymReviewIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private JsonNode dataOf(ResultActions actions) throws Exception {

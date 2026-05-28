@@ -63,7 +63,7 @@ class ReportIntegrationTest {
                         .content(objectMapper.writeValueAsString(
                                 new CreateReportRequest("user", targetId, "spam", "스팸 계정입니다"))))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.report_id").isNumber());
+                .andExpect(jsonPath("$.data.reportId").isNumber());
     }
 
     @Test
@@ -186,7 +186,7 @@ class ReportIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private JsonNode dataOf(ResultActions actions) throws Exception {

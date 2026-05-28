@@ -85,10 +85,10 @@ class AnalysisIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("done"))
-                .andExpect(jsonPath("$.data.model_version").value("rule_v1"))
+                .andExpect(jsonPath("$.data.modelVersion").value("rule_v1"))
                 .andExpect(jsonPath("$.data.segments.length()").value(2))
                 .andExpect(jsonPath("$.data.segments[0].technique").value("highstep"))
-                .andExpect(jsonPath("$.data.segments[1].is_dynamic").value(true));
+                .andExpect(jsonPath("$.data.segments[1].isDynamic").value(true));
 
         mockMvc.perform(get("/api/videos/" + videoId + "/analysis"))
                 .andExpect(jsonPath("$.data.status").value("done"))
@@ -125,7 +125,7 @@ class AnalysisIntegrationTest {
 
         mockMvc.perform(get("/api/videos/" + videoId + "/analysis"))
                 .andExpect(jsonPath("$.data.segments.length()").value(1))
-                .andExpect(jsonPath("$.data.model_version").value("lstm_v1"))
+                .andExpect(jsonPath("$.data.modelVersion").value("lstm_v1"))
                 .andExpect(jsonPath("$.data.segments[0].technique").value("lock_off"));
     }
 
@@ -202,7 +202,7 @@ class AnalysisIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.label_id").isNumber());
+                .andExpect(jsonPath("$.data.labelId").isNumber());
     }
 
     // ===== helpers =====
@@ -237,7 +237,7 @@ class AnalysisIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private JsonNode dataOf(ResultActions actions) throws Exception {

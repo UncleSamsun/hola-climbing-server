@@ -71,11 +71,11 @@ class UserProfileIntegrationTest {
 
         mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + me.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.user_id").value(me.id()))
+                .andExpect(jsonPath("$.data.userId").value(me.id()))
                 .andExpect(jsonPath("$.data.email").value("me@hola.com"))
-                .andExpect(jsonPath("$.data.follower_count").value(0))
-                .andExpect(jsonPath("$.data.following_count").value(0))
-                .andExpect(jsonPath("$.data.email_verified").value(true));
+                .andExpect(jsonPath("$.data.followerCount").value(0))
+                .andExpect(jsonPath("$.data.followingCount").value(0))
+                .andExpect(jsonPath("$.data.emailVerified").value(true));
     }
 
     @Test
@@ -118,8 +118,8 @@ class UserProfileIntegrationTest {
 
         mockMvc.perform(get("/api/users/" + target.id()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.user_id").value(target.id()))
-                .andExpect(jsonPath("$.data.is_following").value(false));
+                .andExpect(jsonPath("$.data.userId").value(target.id()))
+                .andExpect(jsonPath("$.data.isFollowing").value(false));
     }
 
     @Test
@@ -142,11 +142,11 @@ class UserProfileIntegrationTest {
 
         mockMvc.perform(get("/api/users/" + b.id()).header("Authorization", "Bearer " + a.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.is_following").value(true))
-                .andExpect(jsonPath("$.data.follower_count").value(1));
+                .andExpect(jsonPath("$.data.isFollowing").value(true))
+                .andExpect(jsonPath("$.data.followerCount").value(1));
 
         mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + a.token()))
-                .andExpect(jsonPath("$.data.following_count").value(1));
+                .andExpect(jsonPath("$.data.followingCount").value(1));
     }
 
     @Test
@@ -187,7 +187,7 @@ class UserProfileIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/users/" + b.id()))
-                .andExpect(jsonPath("$.data.follower_count").value(0));
+                .andExpect(jsonPath("$.data.followerCount").value(0));
     }
 
     @Test
@@ -201,13 +201,13 @@ class UserProfileIntegrationTest {
 
         mockMvc.perform(get("/api/users/" + b.id() + "/followers"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(1))
-                .andExpect(jsonPath("$.data.content[0].user_id").value(a.id()));
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].userId").value(a.id()));
 
         mockMvc.perform(get("/api/users/" + a.id() + "/following"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(1))
-                .andExpect(jsonPath("$.data.content[0].user_id").value(b.id()));
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].userId").value(b.id()));
     }
 
     @Test
@@ -224,11 +224,11 @@ class UserProfileIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/users/" + b.id()))
-                .andExpect(jsonPath("$.data.follower_count").value(0));
+                .andExpect(jsonPath("$.data.followerCount").value(0));
         mockMvc.perform(get("/api/users/me/blocks").header("Authorization", "Bearer " + a.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(1))
-                .andExpect(jsonPath("$.data.content[0].user_id").value(b.id()));
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].userId").value(b.id()));
     }
 
     @Test
@@ -244,7 +244,7 @@ class UserProfileIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/users/me/blocks").header("Authorization", "Bearer " + a.token()))
-                .andExpect(jsonPath("$.data.total_elements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(0));
     }
 
     @Test
@@ -295,7 +295,7 @@ class UserProfileIntegrationTest {
         String token = dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
         return new TestUser(user.getId(), token);
     }
 

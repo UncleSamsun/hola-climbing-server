@@ -90,7 +90,7 @@ class ChatIntegrationTest {
         mockMvc.perform(post("/api/chats/gyms/1/join").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").isNumber())
-                .andExpect(jsonPath("$.data.gym_id").value(1));
+                .andExpect(jsonPath("$.data.gymId").value(1));
     }
 
     @Test
@@ -129,7 +129,7 @@ class ChatIntegrationTest {
         mockMvc.perform(get("/api/chats/gyms/1/messages")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(0));
     }
 
     @Test
@@ -178,9 +178,9 @@ class ChatIntegrationTest {
         mockMvc.perform(get("/api/chats/gyms/1/messages")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(1))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].content").value("first send!"))
-                .andExpect(jsonPath("$.data.content[0].verified_at_gym").value(true));
+                .andExpect(jsonPath("$.data.content[0].verifiedAtGym").value(true));
 
         session.disconnect();
         client.stop();
@@ -247,7 +247,7 @@ class ChatIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private JsonNode dataOf(ResultActions actions) throws Exception {

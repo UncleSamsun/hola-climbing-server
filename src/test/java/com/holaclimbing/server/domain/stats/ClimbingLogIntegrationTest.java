@@ -70,9 +70,9 @@ class ClimbingLogIntegrationTest {
                                 1L, LocalDate.of(2026, 5, 10), Map.of("빨강", 3, "파랑", 2), "좋은 날"))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").isNumber())
-                .andExpect(jsonPath("$.data.gym_id").value(1))
-                .andExpect(jsonPath("$.data.total_problems").value(5))
-                .andExpect(jsonPath("$.data.grade_counts.빨강").value(3));
+                .andExpect(jsonPath("$.data.gymId").value(1))
+                .andExpect(jsonPath("$.data.totalProblems").value(5))
+                .andExpect(jsonPath("$.data.gradeCounts.빨강").value(3));
     }
 
     @Test
@@ -122,7 +122,7 @@ class ClimbingLogIntegrationTest {
                         .header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON).content(update))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_problems").value(4));
+                .andExpect(jsonPath("$.data.totalProblems").value(4));
 
         mockMvc.perform(delete("/api/climbing-logs/" + logId).header("Authorization", "Bearer " + owner))
                 .andExpect(status().isOk());
@@ -145,8 +145,8 @@ class ClimbingLogIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].date").value("2026-05-10"))
-                .andExpect(jsonPath("$.data[0].log_count").value(2))
-                .andExpect(jsonPath("$.data[0].total_problems").value(5));
+                .andExpect(jsonPath("$.data[0].logCount").value(2))
+                .andExpect(jsonPath("$.data[0].totalProblems").value(5));
 
         mockMvc.perform(get("/api/stats/me/calendar/2026-05-10")
                         .header("Authorization", "Bearer " + token))
@@ -179,7 +179,7 @@ class ClimbingLogIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private JsonNode dataOf(ResultActions actions) throws Exception {

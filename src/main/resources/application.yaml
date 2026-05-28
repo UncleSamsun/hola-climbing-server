@@ -22,9 +22,9 @@ spring:
 
   # Jackson(JSON) 설정
   jackson:
-    property-naming-strategy: SNAKE_CASE  # camelCase ↔ snake_case 자동 변환
     default-property-inclusion: non_null  # null 필드 응답에서 제외
     time-zone: Asia/Seoul
+    # property-naming-strategy 미지정 → camelCase (Java 필드명 그대로). 프론트(Vue3+TS)와 통일.
 
 # MyBatis 설정
 mybatis:

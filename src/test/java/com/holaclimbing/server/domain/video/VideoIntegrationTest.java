@@ -82,9 +82,9 @@ class VideoIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").isNumber())
                 .andExpect(jsonPath("$.data.status").value("pending"))
-                .andExpect(jsonPath("$.data.stream_url").exists())
-                .andExpect(jsonPath("$.data.view_count").value(0))
-                .andExpect(jsonPath("$.data.is_public").value(true));
+                .andExpect(jsonPath("$.data.streamUrl").exists())
+                .andExpect(jsonPath("$.data.viewCount").value(0))
+                .andExpect(jsonPath("$.data.isPublic").value(true));
     }
 
     @Test
@@ -98,9 +98,9 @@ class VideoIntegrationTest {
                         .content(objectMapper.writeValueAsString(
                                 new UploadUrlRequest("send.mp4", 10_000_000L, "video/mp4"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.upload_url").exists())
-                .andExpect(jsonPath("$.data.object_path").value(org.hamcrest.Matchers.endsWith(".mp4")))
-                .andExpect(jsonPath("$.data.expires_in").isNumber());
+                .andExpect(jsonPath("$.data.uploadUrl").exists())
+                .andExpect(jsonPath("$.data.objectPath").value(org.hamcrest.Matchers.endsWith(".mp4")))
+                .andExpect(jsonPath("$.data.expiresIn").isNumber());
     }
 
     @Test
@@ -151,7 +151,7 @@ class VideoIntegrationTest {
 
         mockMvc.perform(get("/api/videos"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(2));
+                .andExpect(jsonPath("$.data.totalElements").value(2));
     }
 
     @Test
@@ -162,9 +162,9 @@ class VideoIntegrationTest {
 
         mockMvc.perform(get("/api/videos/" + videoId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.view_count").value(1));
+                .andExpect(jsonPath("$.data.viewCount").value(1));
         mockMvc.perform(get("/api/videos/" + videoId))
-                .andExpect(jsonPath("$.data.view_count").value(2));
+                .andExpect(jsonPath("$.data.viewCount").value(2));
     }
 
     @Test
@@ -220,7 +220,7 @@ class VideoIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/videos"))
-                .andExpect(jsonPath("$.data.total_elements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(0));
         mockMvc.perform(get("/api/videos/" + videoId))
                 .andExpect(status().isNotFound());
     }
@@ -236,8 +236,8 @@ class VideoIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/videos/" + videoId).header("Authorization", "Bearer " + liker))
-                .andExpect(jsonPath("$.data.like_count").value(1))
-                .andExpect(jsonPath("$.data.is_liked").value(true));
+                .andExpect(jsonPath("$.data.likeCount").value(1))
+                .andExpect(jsonPath("$.data.isLiked").value(true));
     }
 
     @Test
@@ -267,7 +267,7 @@ class VideoIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/videos/" + videoId))
-                .andExpect(jsonPath("$.data.like_count").value(0));
+                .andExpect(jsonPath("$.data.likeCount").value(0));
     }
 
     @Test
@@ -285,7 +285,7 @@ class VideoIntegrationTest {
                 .andExpect(jsonPath("$.data.content").value("nice send!"));
 
         mockMvc.perform(get("/api/videos/" + videoId))
-                .andExpect(jsonPath("$.data.comment_count").value(1));
+                .andExpect(jsonPath("$.data.commentCount").value(1));
     }
 
     @Test
@@ -312,7 +312,7 @@ class VideoIntegrationTest {
 
         mockMvc.perform(get("/api/videos/" + videoId + "/comments"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(2))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
                 .andExpect(jsonPath("$.data.content[0].content").value("first"));
     }
 
@@ -327,9 +327,9 @@ class VideoIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/videos/" + videoId + "/comments"))
-                .andExpect(jsonPath("$.data.total_elements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(0));
         mockMvc.perform(get("/api/videos/" + videoId))
-                .andExpect(jsonPath("$.data.comment_count").value(0));
+                .andExpect(jsonPath("$.data.commentCount").value(0));
     }
 
     @Test
@@ -352,7 +352,7 @@ class VideoIntegrationTest {
 
         mockMvc.perform(get("/api/videos/" + videoId + "/status"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.video_id").value(videoId))
+                .andExpect(jsonPath("$.data.videoId").value(videoId))
                 .andExpect(jsonPath("$.data.status").value("pending"));
     }
 
@@ -394,7 +394,7 @@ class VideoIntegrationTest {
 
         mockMvc.perform(get("/api/gyms/1/videos"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(2));
+                .andExpect(jsonPath("$.data.totalElements").value(2));
     }
 
     @Test
@@ -407,7 +407,7 @@ class VideoIntegrationTest {
         mockMvc.perform(post("/api/videos/" + videoId + "/share")
                         .header("Authorization", "Bearer " + other))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.share_url").value(org.hamcrest.Matchers.endsWith("/videos/" + videoId)));
+                .andExpect(jsonPath("$.data.shareUrl").value(org.hamcrest.Matchers.endsWith("/videos/" + videoId)));
     }
 
     @Test
@@ -420,7 +420,7 @@ class VideoIntegrationTest {
         mockMvc.perform(post("/api/videos/" + videoId + "/share")
                         .header("Authorization", "Bearer " + owner))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.share_url").exists());
+                .andExpect(jsonPath("$.data.shareUrl").exists());
         mockMvc.perform(post("/api/videos/" + videoId + "/share")
                         .header("Authorization", "Bearer " + other))
                 .andExpect(status().isForbidden())
@@ -463,7 +463,7 @@ class VideoIntegrationTest {
         return dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
     }
 
     private long createVideo(String token, boolean isPublic) throws Exception {

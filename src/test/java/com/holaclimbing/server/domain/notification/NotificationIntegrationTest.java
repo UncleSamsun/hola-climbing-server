@@ -86,10 +86,10 @@ class NotificationIntegrationTest {
 
         mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + owner.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total_elements").value(1))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].type").value("comment"))
-                .andExpect(jsonPath("$.data.content[0].sender_id").value(commenter.id()))
-                .andExpect(jsonPath("$.data.content[0].is_read").value(false));
+                .andExpect(jsonPath("$.data.content[0].senderId").value(commenter.id()))
+                .andExpect(jsonPath("$.data.content[0].isRead").value(false));
     }
 
     @Test
@@ -117,7 +117,7 @@ class NotificationIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + owner.token()))
-                .andExpect(jsonPath("$.data.total_elements").value(1))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].type").value("like"));
     }
 
@@ -132,9 +132,9 @@ class NotificationIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + target.token()))
-                .andExpect(jsonPath("$.data.total_elements").value(1))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].type").value("follow"))
-                .andExpect(jsonPath("$.data.content[0].sender_id").value(follower.id()));
+                .andExpect(jsonPath("$.data.content[0].senderId").value(follower.id()));
     }
 
     @Test
@@ -148,7 +148,7 @@ class NotificationIntegrationTest {
         comment(replier.token(), videoId, "nice point", parentCommentId);
 
         mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + owner.token()))
-                .andExpect(jsonPath("$.data.total_elements").value(1))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].type").value("reply"));
     }
 
@@ -198,7 +198,7 @@ class NotificationIntegrationTest {
         mockMvc.perform(patch("/api/notifications/all/read")
                         .header("Authorization", "Bearer " + owner.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.unread_count").value(0));
+                .andExpect(jsonPath("$.data.unreadCount").value(0));
 
         mockMvc.perform(get("/api/notifications/unread-count")
                         .header("Authorization", "Bearer " + owner.token()))
@@ -219,10 +219,10 @@ class NotificationIntegrationTest {
 
         mockMvc.perform(get("/api/notifications").param("unreadOnly", "true")
                         .header("Authorization", "Bearer " + owner.token()))
-                .andExpect(jsonPath("$.data.total_elements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(0));
         mockMvc.perform(get("/api/notifications").param("unreadOnly", "false")
                         .header("Authorization", "Bearer " + owner.token()))
-                .andExpect(jsonPath("$.data.total_elements").value(1));
+                .andExpect(jsonPath("$.data.totalElements").value(1));
     }
 
     @Test
@@ -252,8 +252,8 @@ class NotificationIntegrationTest {
         mockMvc.perform(get("/api/notifications/settings")
                         .header("Authorization", "Bearer " + user.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.notify_comment").value(true))
-                .andExpect(jsonPath("$.data.notify_like").value(true));
+                .andExpect(jsonPath("$.data.notifyComment").value(true))
+                .andExpect(jsonPath("$.data.notifyLike").value(true));
     }
 
     @Test
@@ -267,12 +267,12 @@ class NotificationIntegrationTest {
                         .content(objectMapper.writeValueAsString(new UpdateNotificationSettingsRequest(
                                 null, null, false, null, null, null))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.notify_like").value(false))
-                .andExpect(jsonPath("$.data.notify_comment").value(true));
+                .andExpect(jsonPath("$.data.notifyLike").value(false))
+                .andExpect(jsonPath("$.data.notifyComment").value(true));
 
         mockMvc.perform(get("/api/notifications/settings")
                         .header("Authorization", "Bearer " + user.token()))
-                .andExpect(jsonPath("$.data.notify_like").value(false));
+                .andExpect(jsonPath("$.data.notifyLike").value(false));
     }
 
     // ===== helpers =====
@@ -291,7 +291,7 @@ class NotificationIntegrationTest {
         String token = dataOf(mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD)))))
-                .path("access_token").asText();
+                .path("accessToken").asText();
         return new TestUser(user.getId(), token);
     }
 
