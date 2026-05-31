@@ -5,10 +5,12 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.HttpMethod;
 import com.google.cloud.storage.Storage;
+import com.holaclimbing.server.common.config.CacheConfig;
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.net.URL;
@@ -60,7 +62,13 @@ public class GcsStorageService {
         return normalizeSchemeForCustomHost(signWithRetry(blobInfo, opts).toString());
     }
 
-    /** 영상 재생용 읽기 Signed URL. objectPath가 없으면 null. */
+    /**
+     * 영상 재생용 읽기 Signed URL. objectPath가 없으면 null.
+     * 같은 objectPath는 5분간 캐시 — 피드 N건이 같은 영상을 가리킬 때 반복 서명 비용을 줄인다.
+     * (캐시 TTL 5분 &lt; URL 유효 15분 이므로 만료 직전 URL이 캐시에서 나가지 않는다.)
+     */
+    @Cacheable(cacheNames = CacheConfig.CACHE_GCS_READ_URL, key = "#objectPath",
+            condition = "#objectPath != null && !#objectPath.isBlank()", unless = "#result == null")
     public String createReadUrl(String objectPath) {
         if (objectPath == null || objectPath.isBlank()) {
             return null;

@@ -1,5 +1,6 @@
 package com.holaclimbing.server.domain.terms.service;
 
+import com.holaclimbing.server.common.config.CacheConfig;
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
 import com.holaclimbing.server.domain.terms.domain.TermVersion;
@@ -7,6 +8,7 @@ import com.holaclimbing.server.domain.terms.dto.request.TermAgreementRequest;
 import com.holaclimbing.server.domain.terms.dto.response.TermResponse;
 import com.holaclimbing.server.domain.terms.mapper.TermsMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class TermsServiceImpl implements TermsService {
     private final TermsMapper termsMapper;
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.CACHE_ACTIVE_TERMS)
     public List<TermResponse> getActiveTerms() {
         return termsMapper.findActiveTerms().stream().map(TermResponse::of).toList();
     }
