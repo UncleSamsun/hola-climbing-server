@@ -8,6 +8,7 @@ import com.google.cloud.storage.Storage;
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.net.URL;
@@ -22,13 +23,21 @@ import java.util.concurrent.TimeUnit;
  * <p>Storage 클라이언트와 서명자(ServiceAccountSigner)는 분리해서 받는다.
  * 테스트에선 Storage가 NoCredentials로 fake-gcs-server를 치고, 서명만 별도로 생성한 SA로 한다.
  * 운영에선 둘 다 ApplicationDefaultCredentials에서 유도된 같은 자격증명을 사용한다.</p>
+ *
+ * <p><b>재시도:</b> SA 키 로컬 서명은 네트워크가 없지만, 운영 Workload Identity 경로는 IAM
+ * {@code signBlob} API를 호출(네트워크)하므로 일시적 실패가 가능하다. signUrl 호출을
+ * 지수 백오프로 최대 3회 재시도한다. (단일 외부 호출이라 AOP 재시도 프레임워크 대신
+ * 경량 수동 재시도 — Spring Boot 4 호환성 리스크 회피.)</p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GcsStorageService {
 
     /** google-cloud-storage가 기본으로 사용하는 GCS 엔드포인트. 이 값이 그대로면 운영 환경으로 본다. */
     private static final String DEFAULT_GCS_HOST = "https://storage.googleapis.com";
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long INITIAL_BACKOFF_MS = 200;
 
     private final Storage storage;
     private final GcsProperties properties;
@@ -39,22 +48,16 @@ public class GcsStorageService {
      * 업로드 PUT 요청은 여기서 서명에 포함된 contentType과 동일한 Content-Type 헤더를 보내야 한다.
      */
     public String createUploadUrl(String objectPath, String contentType) {
-        try {
-            BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(properties.bucket(), objectPath))
-                    .setContentType(contentType)
-                    .build();
-            List<Storage.SignUrlOption> opts = new ArrayList<>(List.of(
-                    Storage.SignUrlOption.httpMethod(HttpMethod.PUT),
-                    Storage.SignUrlOption.withContentType(),
-                    Storage.SignUrlOption.withV4Signature(),
-                    Storage.SignUrlOption.signWith(signer)));
-            applyCustomHostName(opts);
-            URL url = storage.signUrl(blobInfo, properties.signedUrlMinutes(), TimeUnit.MINUTES,
-                    opts.toArray(new Storage.SignUrlOption[0]));
-            return normalizeSchemeForCustomHost(url.toString());
-        } catch (RuntimeException e) {
-            throw new BusinessException(ErrorCode.GCS_UPLOAD_FAILED);
-        }
+        BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(properties.bucket(), objectPath))
+                .setContentType(contentType)
+                .build();
+        List<Storage.SignUrlOption> opts = new ArrayList<>(List.of(
+                Storage.SignUrlOption.httpMethod(HttpMethod.PUT),
+                Storage.SignUrlOption.withContentType(),
+                Storage.SignUrlOption.withV4Signature(),
+                Storage.SignUrlOption.signWith(signer)));
+        applyCustomHostName(opts);
+        return normalizeSchemeForCustomHost(signWithRetry(blobInfo, opts).toString());
     }
 
     /** 영상 재생용 읽기 Signed URL. objectPath가 없으면 null. */
@@ -62,16 +65,43 @@ public class GcsStorageService {
         if (objectPath == null || objectPath.isBlank()) {
             return null;
         }
+        BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(properties.bucket(), objectPath)).build();
+        List<Storage.SignUrlOption> opts = new ArrayList<>(List.of(
+                Storage.SignUrlOption.withV4Signature(),
+                Storage.SignUrlOption.signWith(signer)));
+        applyCustomHostName(opts);
+        return normalizeSchemeForCustomHost(signWithRetry(blobInfo, opts).toString());
+    }
+
+    /**
+     * signUrl을 지수 백오프로 최대 MAX_ATTEMPTS회 재시도. 모두 실패하면 GCS_UPLOAD_FAILED.
+     * 로컬 SA 서명은 사실상 1회에 성공/실패가 확정되지만, IAM signBlob 경로의 일시적 5xx·타임아웃을 흡수한다.
+     */
+    private URL signWithRetry(BlobInfo blobInfo, List<Storage.SignUrlOption> opts) {
+        long backoffMs = INITIAL_BACKOFF_MS;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                return storage.signUrl(blobInfo, properties.signedUrlMinutes(), TimeUnit.MINUTES,
+                        opts.toArray(new Storage.SignUrlOption[0]));
+            } catch (RuntimeException e) {
+                if (attempt == MAX_ATTEMPTS) {
+                    log.warn("GCS signUrl 최종 실패 ({}회 시도) — {}", MAX_ATTEMPTS, e.getMessage());
+                    throw new BusinessException(ErrorCode.GCS_UPLOAD_FAILED);
+                }
+                log.warn("GCS signUrl 실패 (시도 {}/{}) — {} — {}ms 후 재시도",
+                        attempt, MAX_ATTEMPTS, e.getMessage(), backoffMs);
+                sleep(backoffMs);
+                backoffMs *= 2;
+            }
+        }
+        throw new BusinessException(ErrorCode.GCS_UPLOAD_FAILED); // 도달 불가 (루프가 항상 반환/throw)
+    }
+
+    private void sleep(long ms) {
         try {
-            BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(properties.bucket(), objectPath)).build();
-            List<Storage.SignUrlOption> opts = new ArrayList<>(List.of(
-                    Storage.SignUrlOption.withV4Signature(),
-                    Storage.SignUrlOption.signWith(signer)));
-            applyCustomHostName(opts);
-            URL url = storage.signUrl(blobInfo, properties.signedUrlMinutes(), TimeUnit.MINUTES,
-                    opts.toArray(new Storage.SignUrlOption[0]));
-            return normalizeSchemeForCustomHost(url.toString());
-        } catch (RuntimeException e) {
+            Thread.sleep(ms);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
             throw new BusinessException(ErrorCode.GCS_UPLOAD_FAILED);
         }
     }
