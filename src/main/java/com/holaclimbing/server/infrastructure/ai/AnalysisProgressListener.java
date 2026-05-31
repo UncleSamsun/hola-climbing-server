@@ -22,6 +22,7 @@ public class AnalysisProgressListener implements MessageListener {
     private final AnalysisStatusStore statusStore;
     private final VideoAnalysisSseService sseService;
     private final AnalysisCompletionNotifier completionNotifier;
+    private final AnalysisDeadLetterQueue deadLetterQueue;
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
@@ -31,7 +32,9 @@ public class AnalysisProgressListener implements MessageListener {
             sseService.broadcast(progress);
             completionNotifier.notifyIfTerminal(progress);
         } catch (Exception e) {
+            // 처리 불가능한 메시지는 버리지 않고 dead-letter로 보관 → 조사·재처리 가능.
             log.warn("진행 이벤트 처리 실패: {}", e.getMessage());
+            deadLetterQueue.record(e.getMessage(), new String(message.getBody()));
         }
     }
 }

@@ -42,6 +42,21 @@ class AnalysisInfraIntegrationTest {
     @Autowired
     private VideoAnalysisSseService sseService;
 
+    @Autowired
+    private AnalysisDeadLetterQueue deadLetterQueue;
+
+    @Test
+    @DisplayName("DLQ — 처리 불가능한 진행 이벤트는 dead-letter에 적재된다")
+    void malformedProgress_landsInDeadLetterQueue() {
+        long before = deadLetterQueue.size();
+
+        // 역직렬화 불가능한 raw 메시지를 progress 채널에 직접 발행 → listener 처리 실패 → DLQ.
+        redis.convertAndSend(RedisAnalysisProgressBus.CHANNEL, "{ this is not valid json");
+
+        await().atMost(3, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(deadLetterQueue.size()).isGreaterThan(before));
+    }
+
     @Test
     @DisplayName("작업 큐 — enqueue하면 Redis Stream에 적재된다")
     void enqueue_appendsRecordToStream() {
