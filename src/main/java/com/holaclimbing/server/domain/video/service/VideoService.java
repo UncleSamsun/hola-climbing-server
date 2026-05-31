@@ -1,5 +1,6 @@
 package com.holaclimbing.server.domain.video.service;
 
+import com.holaclimbing.server.common.response.CursorPageResponse;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UpdateVideoRequest;
@@ -20,7 +21,8 @@ public interface VideoService {
     VideoDetailResponse createVideo(Long userId, CreateVideoRequest request);
 
     /** 공개 피드 조회. uploaderId가 있으면 해당 업로더로 필터. */
-    PageResponse<VideoSummaryResponse> getFeed(Long uploaderId, int page, int size);
+    /** 공개 피드 (커서 기반 무한 스크롤). cursor가 null이면 첫 페이지. uploaderId가 있으면 해당 업로더로 필터. */
+    CursorPageResponse<VideoSummaryResponse> getFeed(Long uploaderId, String cursor, int size);
 
     /** 특정 암장의 공개 영상 목록. */
     PageResponse<VideoSummaryResponse> getGymVideos(Long gymId, int page, int size);

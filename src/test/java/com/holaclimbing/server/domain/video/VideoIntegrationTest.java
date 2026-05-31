@@ -142,7 +142,7 @@ class VideoIntegrationTest {
     }
 
     @Test
-    @DisplayName("피드 — 공개 영상만 노출되고 비공개는 제외된다")
+    @DisplayName("피드 — 공개 영상만 노출되고 비공개는 제외된다 (커서)")
     void getFeed_returnsPublicOnly() throws Exception {
         String token = register("a@hola.com", "climberone");
         createVideo(token, true);
@@ -151,7 +151,44 @@ class VideoIntegrationTest {
 
         mockMvc.perform(get("/api/videos"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(2));
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.nextCursor").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("피드 — 커서로 다음 페이지를 중복·누락 없이 가져온다")
+    void getFeed_cursorPagination() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        for (int i = 0; i < 3; i++) {
+            createVideo(token, true);
+        }
+
+        // size=2 → 2건 + hasNext=true + nextCursor 발급
+        var firstPage = dataOf(mockMvc.perform(get("/api/videos").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(true)));
+        long firstId0 = firstPage.path("content").get(0).path("id").asLong();
+        long firstId1 = firstPage.path("content").get(1).path("id").asLong();
+        String cursor = firstPage.path("nextCursor").asText();
+
+        // 두 번째 페이지 — 남은 1건, hasNext=false, 첫 페이지와 겹치지 않음
+        var secondPage = dataOf(mockMvc.perform(get("/api/videos").param("size", "2").param("cursor", cursor))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.hasNext").value(false)));
+        long secondId = secondPage.path("content").get(0).path("id").asLong();
+        org.assertj.core.api.Assertions.assertThat(secondId)
+                .isNotIn(firstId0, firstId1)
+                .isLessThan(firstId1);   // id 내림차순이므로 다음 페이지 id가 더 작다
+    }
+
+    @Test
+    @DisplayName("피드 — 잘못된 커서는 400")
+    void getFeed_invalidCursor_returns400() throws Exception {
+        mockMvc.perform(get("/api/videos").param("cursor", "!!!not-base64!!!"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -220,7 +257,8 @@ class VideoIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/videos"))
-                .andExpect(jsonPath("$.data.totalElements").value(0));
+                .andExpect(jsonPath("$.data.content.length()").value(0))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
         mockMvc.perform(get("/api/videos/" + videoId))
                 .andExpect(status().isNotFound());
     }

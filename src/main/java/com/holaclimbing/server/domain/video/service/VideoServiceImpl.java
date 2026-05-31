@@ -2,6 +2,8 @@ package com.holaclimbing.server.domain.video.service;
 
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
+import com.holaclimbing.server.common.response.CursorCodec;
+import com.holaclimbing.server.common.response.CursorPageResponse;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.gym.mapper.GymMapper;
 import com.holaclimbing.server.domain.notification.service.NotificationService;
@@ -93,13 +95,17 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public PageResponse<VideoSummaryResponse> getFeed(Long uploaderId, int page, int size) {
-        long total = videoMapper.countFeed(uploaderId);
-        List<VideoSummaryResponse> content = videoMapper.findFeed(uploaderId, size, page * size)
-                .stream()
+    public CursorPageResponse<VideoSummaryResponse> getFeed(Long uploaderId, String cursor, int size) {
+        Long cursorId = CursorCodec.decode(cursor);
+        // hasNext 판정을 위해 한 건 더 가져온다.
+        List<Video> rows = videoMapper.findFeedByCursor(uploaderId, cursorId, size + 1);
+        boolean hasNext = rows.size() > size;
+        List<Video> pageRows = hasNext ? rows.subList(0, size) : rows;
+        List<VideoSummaryResponse> content = pageRows.stream()
                 .map(v -> VideoSummaryResponse.from(v, gcsStorageService.createReadUrl(v.getGcsPath())))
                 .toList();
-        return PageResponse.of(content, page, size, total);
+        String nextCursor = hasNext ? CursorCodec.encode(pageRows.get(pageRows.size() - 1).getId()) : null;
+        return CursorPageResponse.of(content, nextCursor, hasNext);
     }
 
     @Override

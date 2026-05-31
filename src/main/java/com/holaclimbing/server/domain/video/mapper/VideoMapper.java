@@ -23,6 +23,15 @@ public interface VideoMapper {
     /** findFeed 결과 총 개수. */
     long countFeed(@Param("userId") Long userId);
 
+    /**
+     * 커서 기반 공개 피드. id 내림차순 keyset 스캔.
+     * cursorId가 null이면 첫 페이지, 아니면 id가 cursorId보다 작은 것부터.
+     * hasNext 판정을 위해 limit는 보통 size+1로 넘긴다.
+     */
+    List<Video> findFeedByCursor(@Param("userId") Long userId,
+                                 @Param("cursorId") Long cursorId,
+                                 @Param("limit") int limit);
+
     /** 특정 암장의 공개 영상 (최신순). */
     List<Video> findByGym(@Param("gymId") Long gymId,
                           @Param("size") int size,

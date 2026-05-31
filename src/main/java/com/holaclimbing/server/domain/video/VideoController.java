@@ -1,6 +1,7 @@
 package com.holaclimbing.server.domain.video;
 
 import com.holaclimbing.server.common.response.ApiResponse;
+import com.holaclimbing.server.common.response.CursorPageResponse;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.video.dto.request.CreateCommentRequest;
 import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
@@ -72,11 +73,11 @@ public class VideoController {
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<VideoSummaryResponse>> getFeed(
+    public ApiResponse<CursorPageResponse<VideoSummaryResponse>> getFeed(
             @RequestParam(required = false) Long userId,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") @Positive int size) {
-        return ApiResponse.success(videoService.getFeed(userId, page, size));
+        return ApiResponse.success(videoService.getFeed(userId, cursor, size));
     }
 
     @GetMapping("/{videoId}")
