@@ -101,11 +101,12 @@ public class GymController {
         return ApiResponse.success(gymService.getPhotos(gymId));
     }
 
-    /** 암장 요일별 운영시간 수정 (인증 필요). */
+    /** 암장 요일별 운영시간 수정 (등록 제안자만 허용). */
     @PatchMapping("/{gymId}/business-hours")
     public ApiResponse<GymDetailResponse> updateBusinessHours(
+            @AuthenticationPrincipal Long userId,
             @PathVariable Long gymId,
             @Valid @RequestBody UpdateBusinessHoursRequest request) {
-        return ApiResponse.success(gymService.updateBusinessHours(gymId, request));
+        return ApiResponse.success(gymService.updateBusinessHours(gymId, userId, request));
     }
 }

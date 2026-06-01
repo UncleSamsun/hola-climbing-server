@@ -87,4 +87,21 @@
         WHERE id = #{id} AND deleted_at IS NULL
     </update>
 
+    <update id="anonymize">
+        <!--
+          chk_user_auth가 (email, password_hash) 또는 (provider, provider_id) 짝을 요구하므로
+          password_hash는 NULL로 못 둔다. bcrypt 형식과 충돌하지 않는 sentinel 값으로 대체해
+          어떤 평문 비밀번호와도 매칭되지 않게 한다.
+        -->
+        UPDATE users
+        SET email = #{email},
+            nickname = #{nickname},
+            password_hash = 'DELETED-' || #{id},
+            email_verification_token = NULL,
+            profile_image = NULL,
+            bio = NULL,
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
 </mapper>

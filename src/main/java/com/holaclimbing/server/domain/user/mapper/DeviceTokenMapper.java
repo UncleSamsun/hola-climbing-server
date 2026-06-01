@@ -20,4 +20,7 @@ public interface DeviceTokenMapper {
 
     /** 토큰 문자열로 단건 삭제 (FCM이 invalid 응답한 토큰 정리용). */
     int deleteByToken(String token);
+
+    /** 사용자의 모든 디바이스 토큰 삭제 (탈퇴 시 FCM 푸시 차단용). */
+    int deleteByUserId(Long userId);
 }

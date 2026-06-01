@@ -45,4 +45,12 @@ public interface UserMapper {
 
     /** 회원 탈퇴 — soft-delete (deleted_at 설정). */
     int softDelete(Long id);
+
+    /**
+     * 탈퇴 시 PII 익명화 — UNIQUE 제약을 풀어 동일 이메일/닉네임으로 재가입 가능하게 한다.
+     * email = deleted_{id}@removed.local, nickname = deleted_{id}.
+     */
+    int anonymize(@Param("id") Long id,
+                  @Param("email") String email,
+                  @Param("nickname") String nickname);
 }

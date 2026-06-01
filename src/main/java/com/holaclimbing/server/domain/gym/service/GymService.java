@@ -31,6 +31,6 @@ public interface GymService {
     /** 암장 사진 목록 조회. */
     List<GymPhotoResponse> getPhotos(Long gymId);
 
-    /** 암장 요일별 운영시간 수정. 갱신된 암장 상세를 반환한다. */
-    GymDetailResponse updateBusinessHours(Long gymId, UpdateBusinessHoursRequest request);
+    /** 암장 요일별 운영시간 수정 (등록 제안자만 허용). 갱신된 암장 상세를 반환한다. */
+    GymDetailResponse updateBusinessHours(Long gymId, Long userId, UpdateBusinessHoursRequest request);
 }
