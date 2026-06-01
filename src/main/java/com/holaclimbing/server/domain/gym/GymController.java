@@ -71,8 +71,9 @@ public class GymController {
     public ApiResponse<PageResponse<VideoSummaryResponse>> getGymVideos(
             @PathVariable Long gymId,
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Positive @Max(100) int size) {
-        return ApiResponse.success(videoService.getGymVideos(gymId, page, size));
+            @RequestParam(defaultValue = "20") @Positive @Max(100) int size,
+            @AuthenticationPrincipal Long viewerId) {
+        return ApiResponse.success(videoService.getGymVideos(gymId, page, size, viewerId));
     }
 
     /** 암장 등록 제안 (인증 필요). status='pending'으로 등록된다. */

@@ -23,7 +23,7 @@ public interface ChatMapper {
     /** 채팅방 멤버 조회. 없으면 null. */
     ChatRoomMember findMember(@Param("roomId") Long roomId, @Param("userId") Long userId);
 
-    /** 멤버 등록. 이미 있으면 무시(ON CONFLICT DO NOTHING). */
+    /** 멤버 등록(upsert). 이미 있으면 left_at을 NULL로, joined_at을 NOW()로 갱신해 재입장을 허용. */
     void insertMember(ChatRoomMember member);
 
     /** 메시지 저장. 생성된 PK는 message.id로 채워진다. */

@@ -57,12 +57,12 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public PageResponse<CommentResponse> getComments(Long videoId, int page, int size) {
+    public PageResponse<CommentResponse> getComments(Long videoId, int page, int size, Long viewerId) {
         if (videoMapper.findById(videoId) == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
-        long total = commentMapper.countByVideoId(videoId);
-        List<CommentResponse> content = commentMapper.findByVideoId(videoId, size, page * size)
+        long total = commentMapper.countByVideoId(videoId, viewerId);
+        List<CommentResponse> content = commentMapper.findByVideoId(videoId, size, page * size, viewerId)
                 .stream().map(CommentResponse::from).toList();
         return PageResponse.of(content, page, size, total);
     }

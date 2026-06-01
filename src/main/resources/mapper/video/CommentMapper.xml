@@ -14,16 +14,29 @@
         WHERE id = #{id} AND deleted_at IS NULL
     </select>
 
+    <!-- viewer가 차단한 작성자의 댓글을 제외하는 공통 조건. -->
+    <sql id="notBlockedByViewer">
+        <if test="viewerId != null">
+            AND NOT EXISTS (
+                SELECT 1 FROM user_blocks
+                WHERE blocker_id = #{viewerId} AND blocked_id = comments.user_id
+            )
+        </if>
+    </sql>
+
     <select id="findByVideoId" resultType="com.holaclimbing.server.domain.video.domain.Comment">
         SELECT id, user_id, video_id, parent_id, content, created_at, updated_at, deleted_at
         FROM comments
         WHERE video_id = #{videoId} AND deleted_at IS NULL
+        <include refid="notBlockedByViewer"/>
         ORDER BY created_at, id
         LIMIT #{size} OFFSET #{offset}
     </select>
 
     <select id="countByVideoId" resultType="long">
-        SELECT COUNT(*) FROM comments WHERE video_id = #{videoId} AND deleted_at IS NULL
+        SELECT COUNT(*) FROM comments
+        WHERE video_id = #{videoId} AND deleted_at IS NULL
+        <include refid="notBlockedByViewer"/>
     </select>
 
     <update id="update">

@@ -26,6 +26,16 @@
         WHERE id = #{id} AND deleted_at IS NULL
     </select>
 
+    <!-- viewer가 차단한 업로더의 영상을 제외하는 공통 조건. -->
+    <sql id="notBlockedByViewer">
+        <if test="viewerId != null">
+            AND NOT EXISTS (
+                SELECT 1 FROM user_blocks
+                WHERE blocker_id = #{viewerId} AND blocked_id = videos.user_id
+            )
+        </if>
+    </sql>
+
     <!-- 커서 keyset 스캔: id는 BIGSERIAL이라 created_at DESC와 동일 순서. cursorId보다 작은 id부터. -->
     <select id="findFeedByCursor" resultType="com.holaclimbing.server.domain.video.domain.Video">
         SELECT <include refid="columns"/>
@@ -37,6 +47,7 @@
         <if test="cursorId != null">
             AND id &lt; #{cursorId}
         </if>
+        <include refid="notBlockedByViewer"/>
         ORDER BY id DESC
         LIMIT #{limit}
     </select>
@@ -46,6 +57,7 @@
         FROM videos
         WHERE is_public = TRUE AND deleted_at IS NULL AND status &lt;&gt; 'failed'
           AND gym_id = #{gymId}
+        <include refid="notBlockedByViewer"/>
         ORDER BY created_at DESC, id DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
@@ -55,6 +67,7 @@
         FROM videos
         WHERE is_public = TRUE AND deleted_at IS NULL AND status &lt;&gt; 'failed'
           AND gym_id = #{gymId}
+        <include refid="notBlockedByViewer"/>
     </select>
 
     <update id="incrementViewCount">

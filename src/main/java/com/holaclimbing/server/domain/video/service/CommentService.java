@@ -10,8 +10,8 @@ public interface CommentService {
     /** 영상에 댓글 작성. parentId가 있으면 대댓글. */
     CommentResponse addComment(Long userId, Long videoId, CreateCommentRequest request);
 
-    /** 영상의 댓글 목록 조회. */
-    PageResponse<CommentResponse> getComments(Long videoId, int page, int size);
+    /** 영상의 댓글 목록 조회. viewerId가 있으면 차단한 작성자의 댓글 제외. */
+    PageResponse<CommentResponse> getComments(Long videoId, int page, int size, Long viewerId);
 
     /** 댓글 수정 (작성자만). */
     CommentResponse updateComment(Long userId, Long commentId, UpdateCommentRequest request);

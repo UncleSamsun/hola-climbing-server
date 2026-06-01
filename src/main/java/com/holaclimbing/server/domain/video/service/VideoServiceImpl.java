@@ -95,10 +95,10 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public CursorPageResponse<VideoSummaryResponse> getFeed(Long uploaderId, String cursor, int size) {
+    public CursorPageResponse<VideoSummaryResponse> getFeed(Long uploaderId, String cursor, int size, Long viewerId) {
         Long cursorId = CursorCodec.decode(cursor);
         // hasNext 판정을 위해 한 건 더 가져온다.
-        List<Video> rows = videoMapper.findFeedByCursor(uploaderId, cursorId, size + 1);
+        List<Video> rows = videoMapper.findFeedByCursor(uploaderId, cursorId, size + 1, viewerId);
         boolean hasNext = rows.size() > size;
         List<Video> pageRows = hasNext ? rows.subList(0, size) : rows;
         List<VideoSummaryResponse> content = pageRows.stream()
@@ -109,9 +109,9 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public PageResponse<VideoSummaryResponse> getGymVideos(Long gymId, int page, int size) {
-        long total = videoMapper.countByGym(gymId);
-        List<VideoSummaryResponse> content = videoMapper.findByGym(gymId, size, page * size)
+    public PageResponse<VideoSummaryResponse> getGymVideos(Long gymId, int page, int size, Long viewerId) {
+        long total = videoMapper.countByGym(gymId, viewerId);
+        List<VideoSummaryResponse> content = videoMapper.findByGym(gymId, size, page * size, viewerId)
                 .stream()
                 .map(v -> VideoSummaryResponse.from(v, gcsStorageService.createReadUrl(v.getGcsPath())))
                 .toList();

@@ -77,8 +77,9 @@ public class VideoController {
     public ApiResponse<CursorPageResponse<VideoSummaryResponse>> getFeed(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "20") @Positive @Max(100) int size) {
-        return ApiResponse.success(videoService.getFeed(userId, cursor, size));
+            @RequestParam(defaultValue = "20") @Positive @Max(100) int size,
+            @AuthenticationPrincipal Long viewerId) {
+        return ApiResponse.success(videoService.getFeed(userId, cursor, size, viewerId));
     }
 
     @GetMapping("/{videoId}")
@@ -155,7 +156,8 @@ public class VideoController {
     public ApiResponse<PageResponse<CommentResponse>> getComments(
             @PathVariable Long videoId,
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Positive @Max(100) int size) {
-        return ApiResponse.success(commentService.getComments(videoId, page, size));
+            @RequestParam(defaultValue = "20") @Positive @Max(100) int size,
+            @AuthenticationPrincipal Long viewerId) {
+        return ApiResponse.success(commentService.getComments(videoId, page, size, viewerId));
     }
 }

@@ -22,15 +22,17 @@ public interface VideoMapper {
      */
     List<Video> findFeedByCursor(@Param("userId") Long userId,
                                  @Param("cursorId") Long cursorId,
-                                 @Param("limit") int limit);
+                                 @Param("limit") int limit,
+                                 @Param("viewerId") Long viewerId);
 
-    /** 특정 암장의 공개 영상 (최신순). */
+    /** 특정 암장의 공개 영상 (최신순). viewerId가 있으면 차단한 업로더 영상 제외. */
     List<Video> findByGym(@Param("gymId") Long gymId,
                           @Param("size") int size,
-                          @Param("offset") int offset);
+                          @Param("offset") int offset,
+                          @Param("viewerId") Long viewerId);
 
-    /** findByGym 결과 총 개수. */
-    long countByGym(Long gymId);
+    /** findByGym 결과 총 개수. viewerId가 있으면 차단한 업로더 영상 제외. */
+    long countByGym(@Param("gymId") Long gymId, @Param("viewerId") Long viewerId);
 
     int incrementViewCount(Long id);
 
