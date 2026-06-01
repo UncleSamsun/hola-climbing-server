@@ -76,6 +76,9 @@ public class VideoServiceImpl implements VideoService {
                 && request.durationSeconds() > uploadProperties.maxDurationSeconds()) {
             throw new BusinessException(ErrorCode.VIDEO_TOO_LONG);
         }
+        // objectPath는 createUploadUrl()이 발급한 자기 소유 경로(videos/uploads/{userId}/...)여야 한다.
+        // 그렇지 않으면 다른 사용자의 GCS 객체를 자기 영상으로 등록할 수 있다.
+        requireOwnedObjectPath(userId, request.objectPath());
         Video video = Video.builder()
                 .userId(userId)
                 .gymId(request.gymId())
@@ -212,6 +215,20 @@ public class VideoServiceImpl implements VideoService {
     private void requireOwner(Video video, Long userId) {
         if (!video.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+    }
+
+    /**
+     * 클라이언트가 보낸 objectPath가 본인의 업로드 prefix({@code uploadPrefix}/{userId}/) 아래인지 검증.
+     * createUploadUrl()이 항상 이 패턴으로 발급하므로 매칭 실패 = 다른 사용자 경로 도용 시도.
+     */
+    private void requireOwnedObjectPath(Long userId, String objectPath) {
+        if (objectPath == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "영상 경로가 비어 있습니다.");
+        }
+        String expectedPrefix = gcsProperties.uploadPrefix() + "/" + userId + "/";
+        if (!objectPath.startsWith(expectedPrefix)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "본인이 업로드한 영상 경로가 아닙니다.");
         }
     }
 }

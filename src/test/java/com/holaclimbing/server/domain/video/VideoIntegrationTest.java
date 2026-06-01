@@ -62,6 +62,20 @@ class VideoIntegrationTest {
     private UserMapper userMapper;
 
     @Test
+    @DisplayName("영상 등록 실패 — 자기 소유 prefix가 아닌 objectPath면 403 FORBIDDEN")
+    void createVideo_foreignObjectPath_returns403() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        var bad = new CreateVideoRequest(null, "stolen", null, null,
+                "videos/uploads/9999/owned-by-someone-else.mp4", null, 45, true);
+        mockMvc.perform(post("/api/videos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(bad)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("C003"));
+    }
+
+    @Test
     @DisplayName("영상 등록 실패 — 토큰 없이 호출하면 401")
     void createVideo_withoutToken_returns401() throws Exception {
         mockMvc.perform(post("/api/videos")
@@ -75,10 +89,12 @@ class VideoIntegrationTest {
     void createVideo_success() throws Exception {
         String token = register("a@hola.com", "climberone");
 
+        var req = new CreateVideoRequest(null, "My Send", "a clean ascent", "V5",
+                ownedObjectPath(token), null, 45, true);
         mockMvc.perform(post("/api/videos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(videoRequest(true))))
+                        .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").isNumber())
                 .andExpect(jsonPath("$.data.status").value("pending"))
@@ -419,9 +435,9 @@ class VideoIntegrationTest {
     @DisplayName("암장 영상 목록 — 해당 암장의 공개 영상만 반환한다")
     void getGymVideos_returnsGymVideos() throws Exception {
         String token = register("a@hola.com", "climberone");
-        var gymVideo = new CreateVideoRequest(1L, "gym clip", "desc", "V4",
-                "gs://hola-bucket/gym.mp4", null, 30, true);
         for (int i = 0; i < 2; i++) {
+            var gymVideo = new CreateVideoRequest(1L, "gym clip", "desc", "V4",
+                    ownedObjectPath(token), null, 30, true);
             mockMvc.perform(post("/api/videos")
                             .header("Authorization", "Bearer " + token)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -484,9 +500,22 @@ class VideoIntegrationTest {
 
     // ===== helpers =====
 
-    private CreateVideoRequest videoRequest(boolean isPublic) {
+    private CreateVideoRequest videoRequest(boolean isPublic) throws Exception {
+        // upload-url 발급(자기 소유 prefix)을 거친 objectPath를 사용해야 createVideo가 통과한다.
         return new CreateVideoRequest(null, "My Send", "a clean ascent", "V5",
-                "gs://hola-bucket/video.mp4", null, 45, isPublic);
+                "REPLACE", null, 45, isPublic);
+    }
+
+    /** 자기 소유 prefix(videos/uploads/{userId}/)에 해당하는 objectPath를 upload-url API로 발급받는다. */
+    private String ownedObjectPath(String token) throws Exception {
+        return dataOf(mockMvc.perform(post("/api/videos/upload-url")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(
+                        new UploadUrlRequest("test-" + java.util.UUID.randomUUID() + ".mp4",
+                                10_000_000L, "video/mp4"))))
+                .andExpect(status().isOk()))
+                .path("objectPath").asText();
     }
 
     /** 회원가입 → 이메일 인증 → 로그인까지 완료하고 accessToken을 반환. */
@@ -505,10 +534,12 @@ class VideoIntegrationTest {
     }
 
     private long createVideo(String token, boolean isPublic) throws Exception {
+        var req = new CreateVideoRequest(null, "My Send", "a clean ascent", "V5",
+                ownedObjectPath(token), null, 45, isPublic);
         return dataOf(mockMvc.perform(post("/api/videos")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(videoRequest(isPublic))))
+                .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated()))
                 .path("id").asLong();
     }
