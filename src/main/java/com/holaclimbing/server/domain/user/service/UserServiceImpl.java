@@ -41,6 +41,7 @@ public class UserServiceImpl implements UserService {
     private final StringRedisTemplate redis;
     private final TokenBlacklist tokenBlacklist;
     private final UserTokenRevoker userTokenRevoker;
+    private final EmailVerificationTokenStore emailVerificationTokenStore;
     private final TermsService termsService;
 
     @Override
@@ -64,6 +65,8 @@ public class UserServiceImpl implements UserService {
                 .build();
         userMapper.insert(user);
         termsService.agree(user.getId(), request.termsAgreed());
+        // 권위 있는 토큰 저장소는 Redis(24h TTL). DB 컬럼은 운영 디버깅용 사본.
+        emailVerificationTokenStore.issue(user.getId(), verificationToken);
 
         emailSender.send(user.getEmail(), verificationToken);
         log.info("회원가입 완료: userId={}, email={}", user.getId(), user.getEmail());
@@ -169,12 +172,11 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void verifyEmail(String token) {
-        User user = userMapper.findByEmailVerificationToken(token);
-        if (user == null) {
-            throw new BusinessException(ErrorCode.INVALID_TOKEN);
-        }
-        userMapper.markEmailVerified(user.getId());
-        log.info("이메일 인증 완료: userId={}", user.getId());
+        // Redis가 권위 있는 검증자 — 만료(24h) 후엔 키가 사라져 즉시 거부된다.
+        Long userId = emailVerificationTokenStore.consume(token)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
+        userMapper.markEmailVerified(userId);
+        log.info("이메일 인증 완료: userId={}", userId);
     }
 
     @Override
@@ -189,6 +191,7 @@ public class UserServiceImpl implements UserService {
         }
         String verificationToken = UUID.randomUUID().toString();
         userMapper.updateEmailVerificationToken(user.getId(), verificationToken);
+        emailVerificationTokenStore.issue(user.getId(), verificationToken);
         emailSender.send(email, verificationToken);
     }
 
