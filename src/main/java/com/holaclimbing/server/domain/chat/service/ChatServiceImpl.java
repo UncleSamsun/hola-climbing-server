@@ -22,7 +22,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
 
-    /** 암장 인증 반경 (미터). 이 거리 안에서 보낸 메시지는 verifiedAtGym=true. */
+    /**
+     * 암장 인증 반경 (미터). 이 거리 안에서 보낸 메시지는 verifiedAtGym=true.
+     *
+     * <p><b>보안 한계 (의도된 동작):</b> 좌표는 클라이언트가 STOMP 메시지에 실어 보낸 값을
+     * 그대로 신뢰한다. 모바일 앱에서 위치를 위조하면 false-positive가 가능하므로
+     * {@code verifiedAtGym}은 채팅 UI의 "현장 인증" 뱃지 표시용일 뿐 권한 결정에 쓰이지 않는다.
+     * 실효성 있는 위치 인증이 필요해지면 모바일 attest API + 서버 IP-geolocation 교차검증을
+     * 도입해야 한다. (TODO: product decision)</p>
+     */
     private static final double GYM_VERIFY_RADIUS_M = 300;
     private static final double EARTH_RADIUS_M = 6_371_000;
 
