@@ -90,7 +90,8 @@ public class GymServiceImpl implements GymService {
     @Override
     @Transactional
     public GymDetailResponse updateBusinessHours(Long gymId, Long userId, UpdateBusinessHoursRequest request) {
-        Gym gym = gymMapper.findById(gymId);
+        // pending 암장도 본인이 만든 거면 수정 가능 (검토 전 정정 시나리오).
+        Gym gym = gymMapper.findByIdIncludingPending(gymId);
         if (gym == null) {
             throw new BusinessException(ErrorCode.GYM_NOT_FOUND);
         }
@@ -100,7 +101,17 @@ public class GymServiceImpl implements GymService {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
         gymMapper.updateBusinessHours(gymId, writeBusinessHours(request.businessHours()));
-        return getGymDetail(gymId);
+        // active 상태가 아니면 getGymDetail이 404를 낸다. 상세 응답 대신 본인이 본 직전 상태로 응답.
+        return gym.getStatus() != null && "active".equals(gym.getStatus())
+                ? getGymDetail(gymId)
+                : pendingDetail(gymMapper.findByIdIncludingPending(gymId));
+    }
+
+    /** pending 상태 암장의 detail (사진 포함). getGymDetail의 active 필터를 우회. */
+    private GymDetailResponse pendingDetail(Gym gym) {
+        List<GymPhotoResponse> photos = gymMapper.findPhotosByGymId(gym.getId())
+                .stream().map(GymPhotoResponse::from).toList();
+        return GymDetailResponse.of(gym, parseBusinessHours(gym.getBusinessHours()), photos);
     }
 
     @Override

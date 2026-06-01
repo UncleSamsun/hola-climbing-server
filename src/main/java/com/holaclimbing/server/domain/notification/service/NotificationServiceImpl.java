@@ -11,11 +11,15 @@ import com.holaclimbing.server.domain.notification.dto.response.NotificationResp
 import com.holaclimbing.server.domain.notification.dto.response.NotificationSettingsResponse;
 import com.holaclimbing.server.domain.notification.mapper.NotificationMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
@@ -104,7 +108,13 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    /** 알림 생성. 자기 자신이 행위자인 경우(recipient == sender)에는 알림을 만들지 않는다. */
+    /**
+     * 알림 생성. 자기 자신이 행위자인 경우(recipient == sender)에는 알림을 만들지 않는다.
+     *
+     * <p>호출자가 트랜잭션 내부면 실제 INSERT를 AFTER_COMMIT으로 미룬다. 좋아요/댓글/팔로우
+     * 트랜잭션이 알림 INSERT 시간만큼 길어지는 것을 막고, 메인 트랜잭션이 롤백되면 알림도
+     * 자연스럽게 발행되지 않는다.</p>
+     */
     private void create(Long recipientId, Long senderId, NotificationType type,
                         String targetType, Long targetId) {
         if (recipientId.equals(senderId)) {
@@ -119,6 +129,27 @@ public class NotificationServiceImpl implements NotificationService {
                 .title(type.getTitle())
                 .content(type.getDefaultContent())
                 .build();
-        notificationMapper.insert(notification);
+        runAfterCommit(() -> {
+            try {
+                notificationMapper.insert(notification);
+            } catch (Exception e) {
+                log.warn("알림 INSERT 실패 — recipient={}, type={}: {}",
+                        recipientId, type.getCode(), e.getMessage());
+            }
+        });
+    }
+
+    /** 트랜잭션 활성 시 AFTER_COMMIT으로 지연 실행, 비-트랜잭션 컨텍스트에선 즉시 실행. */
+    private void runAfterCommit(Runnable task) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
+        } else {
+            task.run();
+        }
     }
 }

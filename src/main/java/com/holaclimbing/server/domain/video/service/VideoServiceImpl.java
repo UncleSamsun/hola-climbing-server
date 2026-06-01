@@ -122,12 +122,13 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    @Transactional
     public VideoDetailResponse getVideoDetail(Long videoId, Long viewerId) {
         Video video = findActiveVideo(videoId);
         if (!video.isPublic() && !video.getUserId().equals(viewerId)) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_ACCESSIBLE);
         }
+        // 의도적으로 비-트랜잭션. view counter는 eventual하게 증가해도 무방하고,
+        // 단일 read에 UPDATE를 묶어 PK 락 보유 시간을 늘리지 않는다.
         videoMapper.incrementViewCount(videoId);
         boolean isLiked = viewerId != null && likeMapper.exists(viewerId, videoId);
         return toDetail(videoMapper.findById(videoId), isLiked);

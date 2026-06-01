@@ -139,22 +139,47 @@ class GymManageIntegrationTest {
     }
 
     @Test
-    @DisplayName("운영시간 수정 — 200, 전달한 요일별 시각으로 치환된다")
+    @DisplayName("운영시간 수정 — 200, 등록 제안자 본인이면 전달한 요일별 시각으로 치환된다")
     void updateBusinessHours_success() throws Exception {
         String token = register("a@hola.com", "climberone");
+        // created_by가 매칭되어야 권한이 통과하므로 suggestGym으로 본인 소유 암장을 만든다.
+        long gymId = suggestGym(token, "My Gym", "addr");
         var body = objectMapper.writeValueAsString(new UpdateBusinessHoursRequest(Map.of(
                 "mon", new DayHours("07:00", "22:00"),
                 "sat", new DayHours("10:00", "20:00"))));
 
-        mockMvc.perform(patch("/api/gyms/1/business-hours")
+        mockMvc.perform(patch("/api/gyms/" + gymId + "/business-hours")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.businessHours.mon.open").value("07:00"))
                 .andExpect(jsonPath("$.data.businessHours.sat.close").value("20:00"));
+        // GET /api/gyms/{id}는 active 암장만 노출하므로 pending 상태에선 따로 검증하지 않는다.
+    }
 
-        mockMvc.perform(get("/api/gyms/1"))
-                .andExpect(jsonPath("$.data.businessHours.mon.open").value("07:00"));
+    @Test
+    @DisplayName("운영시간 수정 실패 — 등록 제안자가 아닌 사용자가 호출하면 403")
+    void updateBusinessHours_byNonCreator_returns403() throws Exception {
+        String owner = register("a@hola.com", "climberone");
+        String other = register("b@hola.com", "climbertwo");
+        long gymId = suggestGym(owner, "Owner Gym", "addr");
+        var body = objectMapper.writeValueAsString(new UpdateBusinessHoursRequest(Map.of(
+                "mon", new DayHours("07:00", "22:00"))));
+
+        mockMvc.perform(patch("/api/gyms/" + gymId + "/business-hours")
+                        .header("Authorization", "Bearer " + other)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    private long suggestGym(String token, String name, String address) throws Exception {
+        return dataOf(mockMvc.perform(post("/api/gyms")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new CreateGymRequest(
+                        name, address, 37.5, 127.0, null, null, null, null, "SEOUL"))))
+                .andExpect(status().isCreated()))
+                .path("id").asLong();
     }
 
     @Test

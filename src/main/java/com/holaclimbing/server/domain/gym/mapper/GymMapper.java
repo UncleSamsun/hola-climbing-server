@@ -13,6 +13,9 @@ public interface GymMapper {
     /** 활성 암장 단건 조회 (status='active', soft-delete 제외). 없으면 null. */
     Gym findById(Long id);
 
+    /** status 무관 단건 조회 (soft-delete만 제외). 본인 pending 암장 수정 권한 검사용. */
+    Gym findByIdIncludingPending(Long id);
+
     /** 이름(부분일치)·지역으로 암장 검색 (이름순). */
     List<Gym> search(@Param("keyword") String keyword,
                       @Param("region") String region,

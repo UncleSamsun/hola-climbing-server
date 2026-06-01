@@ -14,6 +14,14 @@
         WHERE id = #{id} AND status = 'active' AND deleted_at IS NULL
     </select>
 
+    <select id="findByIdIncludingPending" resultType="com.holaclimbing.server.domain.gym.domain.Gym">
+        SELECT id, name, address, lat, lng, description, phone, website, thumbnail_url,
+               business_hours, region_code, rating_avg, rating_count, status, created_by,
+               created_at, updated_at, deleted_at
+        FROM gyms
+        WHERE id = #{id} AND deleted_at IS NULL
+    </select>
+
     <select id="search" resultType="com.holaclimbing.server.domain.gym.domain.Gym">
         SELECT <include refid="summaryColumns"/>
         FROM gyms

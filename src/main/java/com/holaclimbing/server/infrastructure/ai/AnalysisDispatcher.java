@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * 영상 등록 시 AI 워커(Python)에 분석을 요청하는 디스패처.
@@ -23,14 +25,32 @@ public class AnalysisDispatcher {
     @Value("${app.base-url}")
     private String baseUrl;
 
-    /** 분석 요청을 큐에 적재하고 상태를 QUEUED로 표기한다. */
+    /**
+     * 분석 요청을 큐에 적재하고 상태를 QUEUED로 표기한다.
+     *
+     * <p>호출자가 트랜잭션 내부면 실제 큐 적재는 AFTER_COMMIT으로 미룬다.
+     * 메인 트랜잭션이 롤백되면 분석도 디스패치되지 않으며, Redis 통신 시간이 영상 등록
+     * 트랜잭션을 길게 만들지 않는다.</p>
+     */
     public void dispatch(Long videoId, String gcsPath) {
         String callbackUrl = baseUrl + "/api/analysis/videos/" + videoId;
-        try {
-            jobQueue.enqueue(new AnalysisJob(videoId, gcsPath, callbackUrl));
-            statusStore.save(AnalysisProgress.of(videoId, AnalysisStage.QUEUED, "분석 대기열에 등록됨"));
-        } catch (Exception e) {
-            log.warn("AI 분석 디스패치 실패 — videoId={}: {}", videoId, e.getMessage());
+        Runnable task = () -> {
+            try {
+                jobQueue.enqueue(new AnalysisJob(videoId, gcsPath, callbackUrl));
+                statusStore.save(AnalysisProgress.of(videoId, AnalysisStage.QUEUED, "분석 대기열에 등록됨"));
+            } catch (Exception e) {
+                log.warn("AI 분석 디스패치 실패 — videoId={}: {}", videoId, e.getMessage());
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
+        } else {
+            task.run();
         }
     }
 }

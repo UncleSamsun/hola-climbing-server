@@ -215,8 +215,13 @@ class AnalysisIntegrationTest {
     }
 
     private long createVideo(String token) throws Exception {
+        long userId = dataOf(mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/users/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())).path("userId").asLong();
+        String path = "videos/uploads/" + userId + "/test-" + java.util.UUID.randomUUID() + ".mp4";
         var request = new CreateVideoRequest(null, "My Send", "a clean ascent", "V5",
-                "gs://hola-bucket/video.mp4", null, 45, true);
+                path, null, 45, true);
         return dataOf(mockMvc.perform(post("/api/videos")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)

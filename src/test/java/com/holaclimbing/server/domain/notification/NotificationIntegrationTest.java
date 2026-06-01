@@ -295,14 +295,24 @@ class NotificationIntegrationTest {
         return new TestUser(user.getId(), token);
     }
 
-    private long createVideo(String token) throws Exception {
+    /** owner의 token에서 user id를 추출해 자기 소유 prefix(videos/uploads/{id}/) 경로로 등록한다. */
+    private long createVideo(String ownerToken) throws Exception {
+        TestUser owner = currentUser(ownerToken);
+        String path = "videos/uploads/" + owner.id() + "/test-" + java.util.UUID.randomUUID() + ".mp4";
         return dataOf(mockMvc.perform(post("/api/videos")
-                .header("Authorization", "Bearer " + token)
+                .header("Authorization", "Bearer " + ownerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new CreateVideoRequest(
-                        null, "My Send", "desc", "V5", "gs://hola-bucket/v.mp4", null, 45, true))))
+                        null, "My Send", "desc", "V5", path, null, 45, true))))
                 .andExpect(status().isCreated()))
                 .path("id").asLong();
+    }
+
+    /** token에 매칭되는 등록 사용자를 GET /api/users/me로 역추적. */
+    private TestUser currentUser(String token) throws Exception {
+        long id = dataOf(mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())).path("userId").asLong();
+        return new TestUser(id, token);
     }
 
     private long comment(String token, long videoId, String content, Long parentId) throws Exception {

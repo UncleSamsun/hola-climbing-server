@@ -95,8 +95,11 @@ class RecommendationIntegrationTest {
     // ===== helpers =====
 
     private void createVideo(String token) throws Exception {
+        long userId = dataOf(mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())).path("userId").asLong();
+        String path = "videos/uploads/" + userId + "/test-" + java.util.UUID.randomUUID() + ".mp4";
         var request = new CreateVideoRequest(null, "feed clip", "desc", "V4",
-                "gs://hola-bucket/clip.mp4", null, 30, true);
+                path, null, 30, true);
         mockMvc.perform(post("/api/videos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
