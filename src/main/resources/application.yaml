@@ -107,7 +107,7 @@ ai:
   analysis-url: ${AI_ANALYSIS_URL:}    # 비어 있으면 디스패치 비활성화 (개발 환경)
 # JWT 설정
 jwt:
-  secret: ${JWT_SECRET:dev-secret-CHANGE-ME-min-32-chars-long-1234567890}
+  secret: ${JWT_SECRET:9f2b7a8c4e6d1f0a3b5c7d9e2f4a6b8c1d3e5f7a9b0c2d4e6f8a1b3c5d7e9f0a}
   access-token-validity-minutes: 30
   refresh-token-validity-days: 14
   issuer: hola-climbing
