@@ -36,6 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Sql(scripts = {
         "classpath:sql/users-schema.sql",
+        "classpath:sql/gyms-schema.sql",
+        "classpath:sql/videos-schema.sql",
+        "classpath:sql/analysis-schema.sql",
         "classpath:sql/stats-schema.sql"
 }, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class StatsIntegrationTest {
@@ -71,7 +74,7 @@ class StatsIntegrationTest {
     }
 
     @Test
-    @DisplayName("내 통계 — 분석 데이터가 없으면 0으로 채운 통계를 반환한다")
+    @DisplayName("내 통계 — 분석 데이터가 없으면 0으로 채운 통계를 반환한다 (dynamic/static 모두 0)")
     void getMyStats_noData_returnsZeros() throws Exception {
         String token = register("a@hola.com", "climberone");
 
@@ -79,7 +82,72 @@ class StatsIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalVideos").value(0))
                 .andExpect(jsonPath("$.data.totalClimbingSeconds").value(0))
-                .andExpect(jsonPath("$.data.techniqueCounts").isEmpty());
+                .andExpect(jsonPath("$.data.techniqueCounts").isEmpty())
+                .andExpect(jsonPath("$.data.dynamicCount").value(0))
+                .andExpect(jsonPath("$.data.staticCount").value(0))
+                .andExpect(jsonPath("$.data.isDynamic").value(false));
+    }
+
+    @Test
+    @DisplayName("내 통계 — 내가 올린 모든 영상의 분석 세그먼트에서 dynamic/static 개수가 집계된다")
+    void getMyStats_dynamicAndStaticCounts() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        long userId = userMapper.findByEmail("a@hola.com").getId();
+        // 영상 2개 등록 — 한 영상에 dynamic 3, static 1 / 다른 영상에 dynamic 0, static 2
+        long videoA = seedVideo(userId);
+        long videoB = seedVideo(userId);
+        seedSegment(videoA, true);
+        seedSegment(videoA, true);
+        seedSegment(videoA, true);
+        seedSegment(videoA, false);
+        seedSegment(videoB, false);
+        seedSegment(videoB, false);
+        // 다른 사용자의 영상·세그먼트는 집계에 포함되지 않아야 한다.
+        register("other@hola.com", "other");
+        long otherId = userMapper.findByEmail("other@hola.com").getId();
+        long otherVideo = seedVideo(otherId);
+        seedSegment(otherVideo, true);
+
+        mockMvc.perform(get("/api/stats/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.dynamicCount").value(3))
+                .andExpect(jsonPath("$.data.staticCount").value(3))
+                // 동률은 dynamic > static 이 아니므로 false
+                .andExpect(jsonPath("$.data.isDynamic").value(false));
+    }
+
+    @Test
+    @DisplayName("특정 사용자 통계 — dynamic이 static보다 많으면 isDynamic=true")
+    void getUserStats_isDynamic_true() throws Exception {
+        register("dyn@hola.com", "dyn");
+        long userId = userMapper.findByEmail("dyn@hola.com").getId();
+        long video = seedVideo(userId);
+        seedSegment(video, true);
+        seedSegment(video, true);
+        seedSegment(video, false);
+
+        mockMvc.perform(get("/api/stats/users/" + userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.dynamicCount").value(2))
+                .andExpect(jsonPath("$.data.staticCount").value(1))
+                .andExpect(jsonPath("$.data.isDynamic").value(true));
+    }
+
+    @Test
+    @DisplayName("특정 사용자 통계 — static이 dynamic보다 많으면 isDynamic=false")
+    void getUserStats_isDynamic_false() throws Exception {
+        register("sta@hola.com", "sta");
+        long userId = userMapper.findByEmail("sta@hola.com").getId();
+        long video = seedVideo(userId);
+        seedSegment(video, false);
+        seedSegment(video, false);
+        seedSegment(video, true);
+
+        mockMvc.perform(get("/api/stats/users/" + userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.dynamicCount").value(1))
+                .andExpect(jsonPath("$.data.staticCount").value(2))
+                .andExpect(jsonPath("$.data.isDynamic").value(false));
     }
 
     @Test
@@ -138,6 +206,20 @@ class StatsIntegrationTest {
                 "INSERT INTO user_stats (user_id, total_videos, total_climbing_seconds, technique_counts) "
                         + "VALUES (?, ?, ?, ?::jsonb)",
                 userId, totalVideos, totalSeconds, techniqueCountsJson);
+    }
+
+    private long seedVideo(long userId) {
+        return jdbcTemplate.queryForObject(
+                "INSERT INTO videos (user_id, title, gcs_path, status, is_public) "
+                        + "VALUES (?, 'seed', 'seed/path.mp4', 'done', TRUE) RETURNING id",
+                Long.class, userId);
+    }
+
+    private void seedSegment(long videoId, boolean isDynamic) {
+        jdbcTemplate.update(
+                "INSERT INTO analysis_results (video_id, sequence_index, technique, is_dynamic) "
+                        + "VALUES (?, 0, 'highstep', ?)",
+                videoId, isDynamic);
     }
 
     /** 회원가입 → 이메일 인증 → 로그인까지 완료하고 accessToken을 반환. */

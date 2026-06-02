@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
+import com.holaclimbing.server.domain.stats.domain.DynamicSegmentCounts;
 import com.holaclimbing.server.domain.stats.domain.Stats;
 import com.holaclimbing.server.domain.stats.dto.response.TechniqueStatsResponse;
 import com.holaclimbing.server.domain.stats.dto.response.UserStatsResponse;
@@ -33,11 +34,15 @@ public class StatsServiceImpl implements StatsService {
         if (userMapper.findById(userId) == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
+        // 분석 세그먼트 dynamic/static 집계는 user_stats 행이 없어도 의미가 있으므로 항상 조회.
+        DynamicSegmentCounts dynamicCounts = statsMapper.findDynamicSegmentCountsByUserId(userId);
         Stats stats = statsMapper.findByUserId(userId);
         if (stats == null) {
-            return UserStatsResponse.empty(userId);
+            return UserStatsResponse.empty(userId, dynamicCounts);
         }
-        return UserStatsResponse.of(stats, parseTechniqueCounts(stats.getTechniqueCounts()));
+        return UserStatsResponse.of(stats,
+                parseTechniqueCounts(stats.getTechniqueCounts()),
+                dynamicCounts);
     }
 
     @Override
