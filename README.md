@@ -60,7 +60,7 @@ AI 분석은 별도의 Python 워커가 수행하며, 백엔드는 분석 요청
 - 모든 응답은 `ApiResponse<T>` 래퍼로 통일, 페이지 응답은 `PageResponse<T>`
 - 모든 오류는 `ErrorCode` enum + `BusinessException` + `GlobalExceptionHandler`로 일원화
 - 도메인 단위 패키지 구조 (`domain/{도메인}` → Controller · Service · Mapper · DTO · Domain)
-- JSON 직렬화는 `snake_case`, 식별자는 `Long`(BIGSERIAL)
+- JSON 직렬화는 `camelCase`, 식별자는 `Long`(BIGSERIAL)
 
 ---
 
