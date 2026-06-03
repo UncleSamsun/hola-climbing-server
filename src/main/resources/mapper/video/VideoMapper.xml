@@ -52,6 +52,9 @@
         <if test="cursorId != null">
             AND videos.id &lt; #{cursorId}
         </if>
+        <if test="recordedDate != null">
+            AND videos.recorded_date = #{recordedDate}
+        </if>
         <include refid="notBlockedByViewer"/>
         ORDER BY videos.id DESC
         LIMIT #{limit}

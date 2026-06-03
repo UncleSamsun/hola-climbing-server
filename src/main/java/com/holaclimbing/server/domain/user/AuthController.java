@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.user;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
 import com.holaclimbing.server.domain.user.dto.request.LogoutRequest;
@@ -41,6 +44,7 @@ public class AuthController {
 
     private final UserService userService;
 
+    @ApiErrorCodes({EMAIL_ALREADY_EXISTS, NICKNAME_ALREADY_EXISTS})
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
         SignupResponse response = userService.signup(request);
@@ -48,16 +52,19 @@ public class AuthController {
                 .body(ApiResponse.success(response, "인증 메일을 발송했습니다. 메일 확인 후 로그인해 주세요."));
     }
 
+    @ApiErrorCodes({USER_NOT_FOUND, PASSWORD_MISMATCH, EMAIL_NOT_VERIFIED})
     @PostMapping("/login")
     public ApiResponse<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(userService.login(request));
     }
 
+    @ApiErrorCodes({INVALID_TOKEN, EXPIRED_TOKEN, USER_NOT_FOUND})
     @PostMapping("/refresh")
     public ApiResponse<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return ApiResponse.success(userService.refresh(request.refreshToken()));
     }
 
+    @ApiErrorCodes({INVALID_TOKEN})
     @PostMapping("/email/verify")
     public ApiResponse<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
         userService.verifyEmail(request.token());
@@ -78,12 +85,14 @@ public class AuthController {
         return ApiResponse.success();
     }
 
+    @ApiErrorCodes({INVALID_RESET_TOKEN})
     @PostMapping("/password/reset")
     public ApiResponse<Void> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
         userService.resetPassword(request.token(), request.newPassword());
         return ApiResponse.success();
     }
 
+    @ApiErrorCodes({USER_NOT_FOUND, INVALID_INPUT})
     @PostMapping("/resend-verification")
     public ApiResponse<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
         userService.resendVerification(request.email());

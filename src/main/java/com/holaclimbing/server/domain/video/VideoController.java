@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.video;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.common.response.CursorPageResponse;
 import com.holaclimbing.server.common.response.PageResponse;
@@ -24,6 +27,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +36,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -58,6 +63,7 @@ public class VideoController {
     private final VideoAnalysisSseService analysisSseService;
     private final AnalysisStatusStore analysisStatusStore;
 
+    @ApiErrorCodes({UNSUPPORTED_VIDEO_FORMAT, VIDEO_TOO_LARGE})
     @PostMapping("/upload-url")
     public ApiResponse<UploadUrlResponse> createUploadUrl(
             @AuthenticationPrincipal Long userId,
@@ -65,6 +71,7 @@ public class VideoController {
         return ApiResponse.success(videoService.createUploadUrl(userId, request));
     }
 
+    @ApiErrorCodes({GYM_NOT_FOUND, INVALID_GYM_GRADE, VIDEO_TOO_LONG, INVALID_INPUT, FORBIDDEN})
     @PostMapping
     public ResponseEntity<ApiResponse<VideoDetailResponse>> createVideo(
             @AuthenticationPrincipal Long userId,
@@ -73,21 +80,26 @@ public class VideoController {
                 .body(ApiResponse.success(videoService.createVideo(userId, request)));
     }
 
+    @ApiErrorCodes({INVALID_INPUT})
     @GetMapping
     public ApiResponse<CursorPageResponse<VideoSummaryResponse>> getFeed(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String cursor,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate recordedDate,
             @RequestParam(defaultValue = "20") @Positive @Max(100) int size,
             @AuthenticationPrincipal Long viewerId) {
-        return ApiResponse.success(videoService.getFeed(userId, cursor, size, viewerId));
+        return ApiResponse.success(videoService.getFeed(userId, cursor, recordedDate, size, viewerId));
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND, VIDEO_NOT_ACCESSIBLE})
     @GetMapping("/{videoId}")
     public ApiResponse<VideoDetailResponse> getVideoDetail(@PathVariable Long videoId,
                                                            @AuthenticationPrincipal Long viewerId) {
         return ApiResponse.success(videoService.getVideoDetail(videoId, viewerId));
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND, FORBIDDEN})
     @PatchMapping("/{videoId}")
     public ApiResponse<VideoDetailResponse> updateVideo(@AuthenticationPrincipal Long userId,
                                                         @PathVariable Long videoId,
@@ -95,6 +107,7 @@ public class VideoController {
         return ApiResponse.success(videoService.updateVideo(userId, videoId, request));
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND, FORBIDDEN})
     @DeleteMapping("/{videoId}")
     public ApiResponse<Void> deleteVideo(@AuthenticationPrincipal Long userId,
                                          @PathVariable Long videoId) {
@@ -102,6 +115,7 @@ public class VideoController {
         return ApiResponse.success();
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND})
     @GetMapping("/{videoId}/status")
     public ApiResponse<VideoStatusResponse> getStatus(@PathVariable Long videoId) {
         return ApiResponse.success(videoService.getStatus(videoId));
@@ -124,12 +138,14 @@ public class VideoController {
         return emitter;
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND, INVALID_INPUT})
     @PostMapping("/{videoId}/like")
     public ApiResponse<LikeResponse> likeVideo(@AuthenticationPrincipal Long userId,
                                                @PathVariable Long videoId) {
         return ApiResponse.success(videoService.likeVideo(userId, videoId));
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND})
     @DeleteMapping("/{videoId}/like")
     public ApiResponse<LikeResponse> unlikeVideo(@AuthenticationPrincipal Long userId,
                                                  @PathVariable Long videoId) {
@@ -137,12 +153,14 @@ public class VideoController {
     }
 
     /** 영상 공유 링크 발급 (F-02-08). 공개 영상은 누구나, 비공개는 소유자만. */
+    @ApiErrorCodes({VIDEO_NOT_FOUND, VIDEO_NOT_ACCESSIBLE})
     @PostMapping("/{videoId}/share")
     public ApiResponse<ShareLinkResponse> shareVideo(@AuthenticationPrincipal Long userId,
                                                      @PathVariable Long videoId) {
         return ApiResponse.success(videoService.createShareLink(userId, videoId));
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND, INVALID_INPUT})
     @PostMapping("/{videoId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> addComment(
             @AuthenticationPrincipal Long userId,
@@ -152,6 +170,7 @@ public class VideoController {
                 .body(ApiResponse.success(commentService.addComment(userId, videoId, request)));
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND})
     @GetMapping("/{videoId}/comments")
     public ApiResponse<PageResponse<CommentResponse>> getComments(
             @PathVariable Long videoId,

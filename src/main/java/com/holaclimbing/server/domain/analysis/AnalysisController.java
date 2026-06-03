@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.analysis;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.domain.analysis.dto.request.AnalysisFeedbackRequest;
 import com.holaclimbing.server.domain.analysis.dto.request.AnalysisIngestRequest;
@@ -29,17 +32,20 @@ public class AnalysisController {
 
     private final AnalysisService analysisService;
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND})
     @GetMapping("/api/videos/{videoId}/analysis")
     public ApiResponse<VideoAnalysisResponse> getAnalysis(@PathVariable Long videoId) {
         return ApiResponse.success(analysisService.getAnalysis(videoId));
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND, FORBIDDEN})
     @PostMapping("/api/videos/{videoId}/analysis/retry")
     public ApiResponse<VideoAnalysisResponse> retryAnalysis(@AuthenticationPrincipal Long userId,
                                                             @PathVariable Long videoId) {
         return ApiResponse.success(analysisService.retryAnalysis(userId, videoId));
     }
 
+    @ApiErrorCodes({VIDEO_NOT_FOUND})
     @PostMapping("/api/videos/{videoId}/analysis/feedback")
     public ResponseEntity<ApiResponse<FeedbackResponse>> submitFeedback(
             @AuthenticationPrincipal Long userId,
@@ -50,6 +56,7 @@ public class AnalysisController {
     }
 
     /** AI 워커(Python) → Spring 결과 수신 콜백. 명세 외 내부 엔드포인트. */
+    @ApiErrorCodes({VIDEO_NOT_FOUND, INVALID_INPUT})
     @PostMapping("/api/analysis/videos/{videoId}")
     public ApiResponse<VideoAnalysisResponse> ingestResult(
             @PathVariable Long videoId,

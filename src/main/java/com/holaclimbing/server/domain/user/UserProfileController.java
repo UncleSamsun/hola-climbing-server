@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.user;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.user.dto.request.UpdateProfileRequest;
@@ -42,12 +45,14 @@ public class UserProfileController {
         return ApiResponse.success(userProfileService.getMyProfile(userId));
     }
 
+    @ApiErrorCodes({NICKNAME_ALREADY_EXISTS})
     @PatchMapping("/me")
     public ApiResponse<MyProfileResponse> updateMyProfile(@AuthenticationPrincipal Long userId,
                                                           @Valid @RequestBody UpdateProfileRequest request) {
         return ApiResponse.success(userProfileService.updateMyProfile(userId, request));
     }
 
+    @ApiErrorCodes({PASSWORD_MISMATCH, USER_NOT_FOUND})
     @DeleteMapping("/me")
     public ApiResponse<Void> withdraw(@AuthenticationPrincipal Long userId,
                                       @Valid @RequestBody WithdrawRequest request) {
@@ -85,6 +90,7 @@ public class UserProfileController {
         return ApiResponse.success(userProfileService.getFollowing(userId, page, size));
     }
 
+    @ApiErrorCodes({INVALID_INPUT})
     @PostMapping("/{userId}/follow")
     public ApiResponse<Void> follow(@AuthenticationPrincipal Long followerId,
                                     @PathVariable Long userId) {
@@ -99,6 +105,7 @@ public class UserProfileController {
         return ApiResponse.success();
     }
 
+    @ApiErrorCodes({INVALID_INPUT})
     @PostMapping("/{userId}/block")
     public ApiResponse<Void> block(@AuthenticationPrincipal Long blockerId,
                                    @PathVariable Long userId) {

@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.video;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.domain.video.dto.request.UpdateCommentRequest;
 import com.holaclimbing.server.domain.video.dto.response.CommentResponse;
@@ -24,6 +27,7 @@ public class CommentController {
 
     private final CommentService commentService;
 
+    @ApiErrorCodes({NOT_FOUND, FORBIDDEN})
     @PatchMapping("/{commentId}")
     public ApiResponse<CommentResponse> updateComment(@AuthenticationPrincipal Long userId,
                                                       @PathVariable Long commentId,
@@ -31,6 +35,7 @@ public class CommentController {
         return ApiResponse.success(commentService.updateComment(userId, commentId, request));
     }
 
+    @ApiErrorCodes({NOT_FOUND, FORBIDDEN})
     @DeleteMapping("/{commentId}")
     public ApiResponse<Void> deleteComment(@AuthenticationPrincipal Long userId,
                                            @PathVariable Long commentId) {

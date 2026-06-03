@@ -341,6 +341,28 @@ class VideoIntegrationTest {
     }
 
     @Test
+    @DisplayName("피드 — recordedDate로 해당 촬영일 영상만 필터한다")
+    void getFeed_filtersByRecordedDate() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        long onJun3 = createVideoOn(token, true, LocalDate.of(2026, 6, 3));
+        createVideoOn(token, true, LocalDate.of(2026, 6, 1));
+
+        var page = dataOf(mockMvc.perform(get("/api/videos").param("recordedDate", "2026-06-03"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].recordedDate").value("2026-06-03")));
+        org.assertj.core.api.Assertions.assertThat(page.path("content").get(0).path("id").asLong())
+                .isEqualTo(onJun3);
+    }
+
+    @Test
+    @DisplayName("피드 — 잘못된 형식의 recordedDate는 400")
+    void getFeed_invalidRecordedDate_returns400() throws Exception {
+        mockMvc.perform(get("/api/videos").param("recordedDate", "06-03-2026"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("영상 상세 — 조회할 때마다 조회수가 증가한다")
     void getVideoDetail_incrementsViewCount() throws Exception {
         String token = register("a@hola.com", "climberone");
@@ -677,8 +699,12 @@ class VideoIntegrationTest {
     }
 
     private long createVideo(String token, boolean isPublic) throws Exception {
+        return createVideoOn(token, isPublic, RECORDED_DATE);
+    }
+
+    private long createVideoOn(String token, boolean isPublic, LocalDate recordedDate) throws Exception {
         var req = new CreateVideoRequest(1L, "My Send", "a clean ascent", 1003L,
-                ownedObjectPath(token), null, 45, RECORDED_DATE, isPublic);
+                ownedObjectPath(token), null, 45, recordedDate, isPublic);
         return dataOf(mockMvc.perform(post("/api/videos")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)

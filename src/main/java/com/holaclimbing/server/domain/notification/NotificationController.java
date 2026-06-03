@@ -1,6 +1,9 @@
 package com.holaclimbing.server.domain.notification;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
 import com.holaclimbing.server.common.exception.BusinessException;
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.common.response.PageResponse;
@@ -53,6 +56,7 @@ public class NotificationController {
     }
 
     /** id가 "all"이면 전체 읽음, 아니면 해당 알림만 읽음 처리한다. */
+    @ApiErrorCodes({NOTIFICATION_NOT_FOUND, INVALID_INPUT})
     @PatchMapping("/{id}/read")
     public ApiResponse<UnreadCountResponse> markRead(@AuthenticationPrincipal Long userId,
                                                      @PathVariable String id) {
@@ -74,6 +78,7 @@ public class NotificationController {
         return ApiResponse.success(notificationService.updateSettings(userId, request));
     }
 
+    @ApiErrorCodes({NOTIFICATION_NOT_FOUND})
     @DeleteMapping("/{notificationId}")
     public ApiResponse<Void> deleteNotification(@AuthenticationPrincipal Long userId,
                                                 @PathVariable Long notificationId) {

@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.gym;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.gym.dto.request.CreateReviewRequest;
@@ -36,6 +39,7 @@ public class GymReviewController {
 
     private final GymReviewService gymReviewService;
 
+    @ApiErrorCodes({GYM_NOT_FOUND, ALREADY_REVIEWED})
     @PostMapping("/{gymId}/reviews")
     public ResponseEntity<ApiResponse<GymReviewResponse>> createReview(
             @AuthenticationPrincipal Long userId,
@@ -53,6 +57,7 @@ public class GymReviewController {
         return ApiResponse.success(gymReviewService.getReviews(gymId, page, size));
     }
 
+    @ApiErrorCodes({REVIEW_NOT_FOUND, FORBIDDEN})
     @PatchMapping("/reviews/{reviewId}")
     public ApiResponse<GymReviewResponse> updateReview(
             @AuthenticationPrincipal Long userId,
@@ -61,6 +66,7 @@ public class GymReviewController {
         return ApiResponse.success(gymReviewService.updateReview(userId, reviewId, request));
     }
 
+    @ApiErrorCodes({REVIEW_NOT_FOUND, FORBIDDEN})
     @DeleteMapping("/reviews/{reviewId}")
     public ApiResponse<Void> deleteReview(@AuthenticationPrincipal Long userId,
                                           @PathVariable Long reviewId) {

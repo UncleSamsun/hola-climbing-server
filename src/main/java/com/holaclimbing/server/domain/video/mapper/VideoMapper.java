@@ -4,6 +4,7 @@ import com.holaclimbing.server.domain.video.domain.Video;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Mapper
@@ -18,10 +19,12 @@ public interface VideoMapper {
     /**
      * 커서 기반 공개 피드. id 내림차순 keyset 스캔.
      * cursorId가 null이면 첫 페이지, 아니면 id가 cursorId보다 작은 것부터.
+     * recordedDate가 있으면 해당 촬영일의 영상만 필터.
      * hasNext 판정을 위해 limit는 보통 size+1로 넘긴다.
      */
     List<Video> findFeedByCursor(@Param("userId") Long userId,
                                  @Param("cursorId") Long cursorId,
+                                 @Param("recordedDate") LocalDate recordedDate,
                                  @Param("limit") int limit,
                                  @Param("viewerId") Long viewerId);
 

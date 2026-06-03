@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.chat;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.chat.dto.response.ChatMessageResponse;
@@ -30,6 +33,7 @@ public class ChatController {
 
     private final ChatService chatService;
 
+    @ApiErrorCodes({GYM_NOT_FOUND})
     @PostMapping("/gyms/{gymId}/join")
     public ApiResponse<ChatRoomResponse> joinGymRoom(@AuthenticationPrincipal Long userId,
                                                      @PathVariable Long gymId) {

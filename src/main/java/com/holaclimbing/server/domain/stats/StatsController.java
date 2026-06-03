@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.stats;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.domain.stats.dto.response.CalendarDayResponse;
 import com.holaclimbing.server.domain.stats.dto.response.ClimbingLogResponse;
@@ -30,16 +33,19 @@ public class StatsController {
     private final StatsService statsService;
     private final ClimbingLogService climbingLogService;
 
+    @ApiErrorCodes({USER_NOT_FOUND})
     @GetMapping("/me")
     public ApiResponse<UserStatsResponse> getMyStats(@AuthenticationPrincipal Long userId) {
         return ApiResponse.success(statsService.getUserStats(userId));
     }
 
+    @ApiErrorCodes({USER_NOT_FOUND})
     @GetMapping("/me/techniques")
     public ApiResponse<TechniqueStatsResponse> getMyTechniqueStats(@AuthenticationPrincipal Long userId) {
         return ApiResponse.success(statsService.getTechniqueStats(userId));
     }
 
+    @ApiErrorCodes({USER_NOT_FOUND})
     @GetMapping("/users/{userId}")
     public ApiResponse<UserStatsResponse> getUserStats(@PathVariable Long userId) {
         return ApiResponse.success(statsService.getUserStats(userId));

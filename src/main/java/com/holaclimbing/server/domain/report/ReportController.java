@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.report;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.domain.report.dto.request.CreateReportRequest;
 import com.holaclimbing.server.domain.report.dto.response.ReportResponse;
@@ -24,6 +27,7 @@ public class ReportController {
 
     private final ReportService reportService;
 
+    @ApiErrorCodes({INVALID_INPUT, SELF_REPORT_NOT_ALLOWED, ALREADY_REPORTED, USER_NOT_FOUND, VIDEO_NOT_FOUND, NOT_FOUND})
     @PostMapping
     public ResponseEntity<ApiResponse<ReportResponse>> createReport(
             @AuthenticationPrincipal Long userId,

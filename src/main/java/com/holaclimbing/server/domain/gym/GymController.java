@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.gym;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.gym.dto.request.CreateGymPhotoRequest;
@@ -54,6 +57,7 @@ public class GymController {
         return ApiResponse.success(gymService.searchGyms(keyword, region, page, size));
     }
 
+    @ApiErrorCodes({INVALID_INPUT})
     @GetMapping("/nearby")
     public ApiResponse<List<GymSummaryResponse>> findNearbyGyms(
             @RequestParam double lat,
@@ -63,11 +67,13 @@ public class GymController {
         return ApiResponse.success(gymService.findNearbyGyms(lat, lng, radius, size));
     }
 
+    @ApiErrorCodes({GYM_NOT_FOUND})
     @GetMapping("/{gymId}")
     public ApiResponse<GymDetailResponse> getGymDetail(@PathVariable Long gymId) {
         return ApiResponse.success(gymService.getGymDetail(gymId));
     }
 
+    @ApiErrorCodes({GYM_NOT_FOUND})
     @GetMapping("/{gymId}/grades")
     public ApiResponse<List<GymGradeResponse>> getGymGrades(@PathVariable Long gymId) {
         return ApiResponse.success(gymService.getGrades(gymId));
@@ -92,6 +98,7 @@ public class GymController {
     }
 
     /** 암장 사진 업로드 (인증 필요). */
+    @ApiErrorCodes({GYM_NOT_FOUND})
     @PostMapping("/{gymId}/photos")
     public ResponseEntity<ApiResponse<GymPhotoResponse>> uploadGymPhoto(
             @AuthenticationPrincipal Long userId,
@@ -102,12 +109,14 @@ public class GymController {
     }
 
     /** 암장 사진 목록 조회 (공개). */
+    @ApiErrorCodes({GYM_NOT_FOUND})
     @GetMapping("/{gymId}/photos")
     public ApiResponse<List<GymPhotoResponse>> getGymPhotos(@PathVariable Long gymId) {
         return ApiResponse.success(gymService.getPhotos(gymId));
     }
 
     /** 암장 요일별 운영시간 수정 (등록 제안자만 허용). */
+    @ApiErrorCodes({GYM_NOT_FOUND, FORBIDDEN})
     @PatchMapping("/{gymId}/business-hours")
     public ApiResponse<GymDetailResponse> updateBusinessHours(
             @AuthenticationPrincipal Long userId,

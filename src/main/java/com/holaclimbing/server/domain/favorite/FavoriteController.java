@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.favorite;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.common.response.PageResponse;
 import com.holaclimbing.server.domain.favorite.service.FavoriteService;
@@ -29,6 +32,7 @@ public class FavoriteController {
 
     private final FavoriteService favoriteService;
 
+    @ApiErrorCodes({GYM_NOT_FOUND, INVALID_INPUT})
     @PostMapping("/gyms/{gymId}")
     public ApiResponse<Void> addFavorite(@AuthenticationPrincipal Long userId,
                                          @PathVariable Long gymId) {

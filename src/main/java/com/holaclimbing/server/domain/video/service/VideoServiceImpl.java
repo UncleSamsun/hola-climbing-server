@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -106,10 +107,11 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public CursorPageResponse<VideoSummaryResponse> getFeed(Long uploaderId, String cursor, int size, Long viewerId) {
+    public CursorPageResponse<VideoSummaryResponse> getFeed(Long uploaderId, String cursor, LocalDate recordedDate,
+                                                            int size, Long viewerId) {
         Long cursorId = CursorCodec.decode(cursor);
         // hasNext 판정을 위해 한 건 더 가져온다.
-        List<Video> rows = videoMapper.findFeedByCursor(uploaderId, cursorId, size + 1, viewerId);
+        List<Video> rows = videoMapper.findFeedByCursor(uploaderId, cursorId, recordedDate, size + 1, viewerId);
         boolean hasNext = rows.size() > size;
         List<Video> pageRows = hasNext ? rows.subList(0, size) : rows;
         List<VideoSummaryResponse> content = pageRows.stream()

@@ -1,5 +1,8 @@
 package com.holaclimbing.server.domain.terms;
 
+import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
+
+import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.domain.terms.dto.request.AgreeTermsRequest;
 import com.holaclimbing.server.domain.terms.dto.response.TermResponse;
@@ -30,6 +33,7 @@ public class TermsController {
         return ApiResponse.success(termsService.getActiveTerms());
     }
 
+    @ApiErrorCodes({INVALID_INPUT})
     @PostMapping("/agree")
     public ApiResponse<Void> agree(@AuthenticationPrincipal Long userId,
                                    @Valid @RequestBody AgreeTermsRequest request) {
