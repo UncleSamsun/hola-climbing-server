@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = {
         "classpath:sql/users-schema.sql",
         "classpath:sql/gyms-schema.sql",
+        "classpath:sql/gyms-data.sql",
         "classpath:sql/videos-schema.sql",
         "classpath:sql/analysis-schema.sql"
 }, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
@@ -220,7 +221,7 @@ class AnalysisIntegrationTest {
                         .get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())).path("userId").asLong();
         String path = "videos/uploads/" + userId + "/test-" + java.util.UUID.randomUUID() + ".mp4";
-        var request = new CreateVideoRequest(null, "My Send", "a clean ascent", "V5",
+        var request = new CreateVideoRequest(1L, "My Send", "a clean ascent", 1003L,
                 path, null, 45, java.time.LocalDate.of(2026, 6, 3), true);
         return dataOf(mockMvc.perform(post("/api/videos")
                 .header("Authorization", "Bearer " + token)

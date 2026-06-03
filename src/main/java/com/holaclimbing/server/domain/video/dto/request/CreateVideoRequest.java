@@ -12,10 +12,12 @@ import java.time.LocalDate;
  * objectPath는 업로드 URL 발급(POST /api/videos/upload-url)에서 받은 GCS 객체 경로.
  */
 public record CreateVideoRequest(
+        @NotNull
         Long gymId,
         @Size(max = 100) String title,
         String description,
-        @Size(max = 20) String grade,
+        @NotNull
+        Long gymGradeId,
         @NotBlank @Size(max = 500) String objectPath,
         @Size(max = 500) String thumbnailPath,
         @Positive Integer durationSeconds,

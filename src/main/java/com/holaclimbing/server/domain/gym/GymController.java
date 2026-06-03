@@ -7,6 +7,7 @@ import com.holaclimbing.server.domain.gym.dto.request.CreateGymRequest;
 import com.holaclimbing.server.domain.gym.dto.request.UpdateBusinessHoursRequest;
 import com.holaclimbing.server.domain.gym.dto.response.CreateGymResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymDetailResponse;
+import com.holaclimbing.server.domain.gym.dto.response.GymGradeResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymPhotoResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymSummaryResponse;
 import com.holaclimbing.server.domain.gym.service.GymService;
@@ -65,6 +66,11 @@ public class GymController {
     @GetMapping("/{gymId}")
     public ApiResponse<GymDetailResponse> getGymDetail(@PathVariable Long gymId) {
         return ApiResponse.success(gymService.getGymDetail(gymId));
+    }
+
+    @GetMapping("/{gymId}/grades")
+    public ApiResponse<List<GymGradeResponse>> getGymGrades(@PathVariable Long gymId) {
+        return ApiResponse.success(gymService.getGrades(gymId));
     }
 
     @GetMapping("/{gymId}/videos")

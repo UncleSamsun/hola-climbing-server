@@ -4,7 +4,7 @@
 
 영상 등록 시 프론트가 선택한 암장의 난이도 목록을 서버에서 받아 표시하고, 사용자가 선택한 암장별 난이도를 영상에 저장한다. `gymId`와 `gymGradeId`는 영상 등록 필수값으로 전환한다.
 
-## Current State
+## Pre-implementation State
 
 - `videos.grade`는 자유 문자열이다.
 - `CreateVideoRequest.grade`를 그대로 저장한다.
@@ -16,7 +16,7 @@
 
 `gym_grades` 마스터 테이블을 추가한다. 영상 등록은 `gymId`와 `gymGradeId`를 모두 필수로 받으며, 서버는 `gymGradeId`가 해당 `gymId`에 속한 활성 난이도인지 검증한다.
 
-기존 응답 호환성을 위해 `videos.grade`는 당분간 유지하고, 선택된 난이도의 `label`을 저장하는 표시용 스냅샷으로 사용한다. 새 정합성 기준은 `videos.gym_grade_id`다.
+개발 단계이므로 기존 응답 호환을 위한 `videos.grade` 스냅샷은 유지하지 않는다. 새 정합성 기준은 `videos.gym_grade_id`이며, 응답은 `gymGrade` 객체(`id`, `gymId`, `label`, `difficultyOrder`)로 선택 난이도를 표현한다.
 
 ## Data Model
 
@@ -27,7 +27,6 @@ CREATE TABLE gym_grades (
     id               BIGSERIAL PRIMARY KEY,
     gym_id           BIGINT NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
     label            VARCHAR(50) NOT NULL,
-    color_hex        VARCHAR(20),
     difficulty_order INTEGER NOT NULL,
     is_active        BOOLEAN NOT NULL DEFAULT TRUE,
     created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -50,12 +49,15 @@ ALTER TABLE videos
     ADD CONSTRAINT fk_videos_gym_grade_same_gym
     FOREIGN KEY (gym_id, gym_grade_id)
     REFERENCES gym_grades(gym_id, id);
+
+ALTER TABLE videos
+    ALTER COLUMN gym_id SET NOT NULL,
+    ALTER COLUMN gym_grade_id SET NOT NULL;
 ```
 
-Future cleanup candidate:
+Cleanup:
 
-- Once frontend and historical data are stable, consider removing or de-emphasizing `videos.grade`.
-- Until then, responses should keep `grade` as display label and add `gymGradeId`.
+- `videos.grade` is removed. Responses expose the selected grade as a `gymGrade` object.
 
 ## API Contract
 
@@ -74,7 +76,6 @@ Response:
       "id": 1,
       "gymId": 9001,
       "label": "빨강",
-      "colorHex": "#E53935",
       "difficultyOrder": 10
     }
   ],
@@ -111,8 +112,8 @@ Rules:
 - `gymGradeId` is required.
 - `gymGradeId` must belong to `gymId`.
 - `gymGradeId` must be active.
-- `grade` in request should be removed or ignored in favor of `gymGradeId`.
-- `videos.grade` stores the selected grade label snapshot.
+- `grade` in request is removed in favor of `gymGradeId`.
+- `videos.grade` is removed; selected grade display data is returned from `gym_grades`.
 
 Recommended error handling:
 
@@ -141,10 +142,10 @@ Gym domain:
 Video domain:
 
 - `CreateVideoRequest`: replace free `grade` input with required `gymGradeId`; make `gymId` `@NotNull`
-- `Video`: add `gymGradeId`
-- `VideoServiceImpl.createVideo`: validate `gymId`, resolve `GymGrade`, set `gymGradeId`, set `grade = gymGrade.label`
+- `Video`: add `gymGradeId`, `gymGradeLabel`, `gymGradeDifficultyOrder`
+- `VideoServiceImpl.createVideo`: validate `gymId`, resolve active `GymGrade`, set `gymGradeId`
 - `VideoMapper.xml`: include `gym_grade_id` in select/insert
-- `VideoDetailResponse`, `VideoSummaryResponse`, `RecommendedVideoResponse`: include `gymGradeId`; keep `grade`
+- `VideoDetailResponse`, `VideoSummaryResponse`, `RecommendedVideoResponse`: expose `gymGrade` object; do not expose top-level `gymGradeId` or `grade`
 - `RecommendationMapper.xml`: select `gym_grade_id`
 - `UpdateVideoRequest` and `VideoServiceImpl.updateVideo`: remove/ignore free `grade`; do not allow grade changes in PATCH until a separate edit flow is defined.
 
@@ -164,7 +165,7 @@ Add integration tests:
 - `POST /api/videos` without `gymGradeId` returns `400 C001`.
 - `POST /api/videos` with a grade from another gym returns invalid-grade error.
 - `POST /api/videos` with an inactive grade returns invalid-grade error.
-- Valid create stores `videos.gym_grade_id`, snapshots `videos.grade`, and returns both `gymGradeId` and `grade`.
+- Valid create stores `videos.gym_grade_id` and returns `gymGrade`.
 - Existing feed/detail/recommendation/gym-video responses still work.
 
 Recommended command:
@@ -178,10 +179,10 @@ Recommended command:
 Update API docs for:
 
 - `영상 등록`: `gymId`, `gymGradeId`, `recordedDate`, `objectPath` required.
-- `영상 상세 조회`: add `gymGradeId`, keep `grade`.
-- `영상 목록 조회`: add `gymGradeId`, keep `grade`.
-- `암장 영상 목록`: add `gymGradeId`, keep `grade`.
-- `영상 피드 추천`: add `gymGradeId`, keep `grade`.
+- `영상 상세 조회`: include `gymGrade` object; remove `grade`/top-level `gymGradeId`.
+- `영상 목록 조회`: include `gymGrade` object; remove `grade`/top-level `gymGradeId`.
+- `암장 영상 목록`: include `gymGrade` object; remove `grade`/top-level `gymGradeId`.
+- `영상 피드 추천`: include `gymGrade` object; remove `grade`/top-level `gymGradeId`.
 - Add new page or section for `GET /api/gyms/{gymId}/grades`.
 
 ## Acceptance Criteria

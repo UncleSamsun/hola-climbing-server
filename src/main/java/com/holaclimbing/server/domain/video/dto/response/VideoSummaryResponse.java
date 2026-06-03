@@ -1,5 +1,6 @@
 package com.holaclimbing.server.domain.video.dto.response;
 
+import com.holaclimbing.server.domain.gym.dto.response.GymGradeResponse;
 import com.holaclimbing.server.domain.video.domain.Video;
 
 import java.time.LocalDate;
@@ -9,8 +10,8 @@ public record VideoSummaryResponse(
         Long id,
         Long userId,
         Long gymId,
+        GymGradeResponse gymGrade,
         String title,
-        String grade,
         String thumbnailPath,
         String streamUrl,
         Integer durationSeconds,
@@ -23,8 +24,16 @@ public record VideoSummaryResponse(
     /** streamUrl은 GCS 읽기 Signed URL — 서비스 계층에서 발급해 주입한다. */
     public static VideoSummaryResponse from(Video video, String streamUrl) {
         return new VideoSummaryResponse(
-                video.getId(), video.getUserId(), video.getGymId(), video.getTitle(), video.getGrade(),
+                video.getId(), video.getUserId(), video.getGymId(), gymGradeOf(video), video.getTitle(),
                 video.getThumbnailPath(), streamUrl, video.getDurationSeconds(), video.getRecordedDate(), video.getViewCount(),
                 video.getLikeCount(), video.getCommentCount(), video.getCreatedAt());
+    }
+
+    private static GymGradeResponse gymGradeOf(Video video) {
+        return new GymGradeResponse(
+                video.getGymGradeId(),
+                video.getGymId(),
+                video.getGymGradeLabel(),
+                video.getGymGradeDifficultyOrder());
     }
 }

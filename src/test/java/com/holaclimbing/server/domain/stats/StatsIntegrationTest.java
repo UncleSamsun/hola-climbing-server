@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = {
         "classpath:sql/users-schema.sql",
         "classpath:sql/gyms-schema.sql",
+        "classpath:sql/gyms-data.sql",
         "classpath:sql/videos-schema.sql",
         "classpath:sql/analysis-schema.sql",
         "classpath:sql/stats-schema.sql"
@@ -210,8 +211,8 @@ class StatsIntegrationTest {
 
     private long seedVideo(long userId) {
         return jdbcTemplate.queryForObject(
-                "INSERT INTO videos (user_id, title, gcs_path, status, is_public) "
-                        + "VALUES (?, 'seed', 'seed/path.mp4', 'done', TRUE) RETURNING id",
+                "INSERT INTO videos (user_id, gym_id, gym_grade_id, title, gcs_path, recorded_date, status, is_public) "
+                        + "VALUES (?, 1, 1003, 'seed', 'seed/path.mp4', DATE '2026-06-03', 'done', TRUE) RETURNING id",
                 Long.class, userId);
     }
 

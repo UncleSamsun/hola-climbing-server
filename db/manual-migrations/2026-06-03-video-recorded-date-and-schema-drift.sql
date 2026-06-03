@@ -14,6 +14,18 @@ WHERE recorded_date IS NULL;
 ALTER TABLE videos
     ALTER COLUMN recorded_date SET NOT NULL;
 
+UPDATE videos
+SET status = CASE status
+    WHEN 'uploaded' THEN 'pending'
+    WHEN 'analyzing' THEN 'pending'
+    WHEN 'analyzed' THEN 'done'
+    ELSE status
+END
+WHERE status IN ('uploaded', 'analyzing', 'analyzed');
+
+ALTER TABLE videos
+    ALTER COLUMN status SET DEFAULT 'pending';
+
 DO $$
 BEGIN
     IF EXISTS (
@@ -60,5 +72,10 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_gym_reviews_gym
     ON gym_reviews(gym_id, created_at DESC);
+
+DROP INDEX IF EXISTS idx_videos_public_feed;
+CREATE INDEX idx_videos_public_feed
+    ON videos(id DESC)
+    WHERE is_public = TRUE AND deleted_at IS NULL;
 
 COMMIT;

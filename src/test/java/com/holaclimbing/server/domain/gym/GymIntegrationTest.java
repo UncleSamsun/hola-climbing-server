@@ -143,4 +143,24 @@ class GymIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("G001"));
     }
+
+    @Test
+    @DisplayName("암장 난이도 목록 — 활성 난이도만 난이도순으로 반환한다")
+    void getGymGrades_returnsActiveGradesOrdered() throws Exception {
+        mockMvc.perform(get("/api/gyms/1/grades"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[0].label").value("초록"))
+                .andExpect(jsonPath("$.data[1].label").value("파랑"))
+                .andExpect(jsonPath("$.data[2].label").value("빨강"))
+                .andExpect(jsonPath("$.data[2].colorHex").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("암장 난이도 목록 — closed 암장은 404 G001")
+    void getGymGrades_closedGym_returns404() throws Exception {
+        mockMvc.perform(get("/api/gyms/5/grades"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("G001"));
+    }
 }

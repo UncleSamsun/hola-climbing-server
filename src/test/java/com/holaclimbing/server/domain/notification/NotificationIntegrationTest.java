@@ -41,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = {
         "classpath:sql/users-schema.sql",
         "classpath:sql/gyms-schema.sql",
+        "classpath:sql/gyms-data.sql",
         "classpath:sql/videos-schema.sql",
         "classpath:sql/notifications-schema.sql"
 }, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
@@ -303,7 +304,7 @@ class NotificationIntegrationTest {
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new CreateVideoRequest(
-                        null, "My Send", "desc", "V5", path, null, 45,
+                        1L, "My Send", "desc", 1003L, path, null, 45,
                         java.time.LocalDate.of(2026, 6, 3), true))))
                 .andExpect(status().isCreated()))
                 .path("id").asLong();

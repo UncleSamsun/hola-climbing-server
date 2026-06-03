@@ -20,9 +20,11 @@ public class Video {
     private Long id;
     private Long userId;
     private Long gymId;
+    private Long gymGradeId;
+    private String gymGradeLabel;
+    private int gymGradeDifficultyOrder;
     private String title;
     private String description;
-    private String grade;
     private String gcsPath;
     private String gcsStreamingPath;
     private String thumbnailPath;

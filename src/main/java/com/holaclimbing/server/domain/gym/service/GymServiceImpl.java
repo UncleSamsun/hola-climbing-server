@@ -13,8 +13,10 @@ import com.holaclimbing.server.domain.gym.dto.request.CreateGymRequest;
 import com.holaclimbing.server.domain.gym.dto.request.UpdateBusinessHoursRequest;
 import com.holaclimbing.server.domain.gym.dto.response.CreateGymResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymDetailResponse;
+import com.holaclimbing.server.domain.gym.dto.response.GymGradeResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymPhotoResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymSummaryResponse;
+import com.holaclimbing.server.domain.gym.mapper.GymGradeMapper;
 import com.holaclimbing.server.domain.gym.mapper.GymMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ public class GymServiceImpl implements GymService {
             };
 
     private final GymMapper gymMapper;
+    private final GymGradeMapper gymGradeMapper;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -65,6 +68,14 @@ public class GymServiceImpl implements GymService {
         List<GymPhotoResponse> photos = gymMapper.findPhotosByGymId(gymId)
                 .stream().map(GymPhotoResponse::from).toList();
         return GymDetailResponse.of(gym, parseBusinessHours(gym.getBusinessHours()), photos);
+    }
+
+    @Override
+    public List<GymGradeResponse> getGrades(Long gymId) {
+        requireGym(gymId);
+        return gymGradeMapper.findActiveByGymId(gymId).stream()
+                .map(GymGradeResponse::from)
+                .toList();
     }
 
     @Override

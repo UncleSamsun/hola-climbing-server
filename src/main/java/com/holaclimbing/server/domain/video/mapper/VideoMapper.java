@@ -48,12 +48,11 @@ public interface VideoMapper {
     int updateVideo(@Param("id") Long id,
                     @Param("title") String title,
                     @Param("description") String description,
-                    @Param("grade") String grade,
                     @Param("isPublic") Boolean isPublic);
 
     /** 영상 soft-delete. */
     int softDelete(Long id);
 
-    /** 분석 상태 갱신 (pending/analyzing/done/failed). */
+    /** 분석 상태 갱신 (pending/done/failed). */
     int updateStatus(@Param("id") Long id, @Param("status") String status);
 }

@@ -8,10 +8,10 @@ DROP TABLE IF EXISTS videos CASCADE;
 CREATE TABLE videos (
     id                  BIGSERIAL PRIMARY KEY,
     user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    gym_id              BIGINT REFERENCES gyms(id) ON DELETE SET NULL,
+    gym_id              BIGINT NOT NULL,
+    gym_grade_id        BIGINT NOT NULL,
     title               VARCHAR(100),
     description         TEXT,
-    grade               VARCHAR(20),
     gcs_path            VARCHAR(500) NOT NULL,
     gcs_streaming_path  VARCHAR(500),
     thumbnail_path      VARCHAR(500),
@@ -22,11 +22,15 @@ CREATE TABLE videos (
     view_count          INTEGER NOT NULL DEFAULT 0,
     like_count          INTEGER NOT NULL DEFAULT 0,
     comment_count       INTEGER NOT NULL DEFAULT 0,
-    status              VARCHAR(20) NOT NULL DEFAULT 'uploaded',
+    status              VARCHAR(20) NOT NULL DEFAULT 'pending',
     is_public           BOOLEAN NOT NULL DEFAULT TRUE,
     created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP NOT NULL DEFAULT NOW(),
-    deleted_at          TIMESTAMP
+    deleted_at          TIMESTAMP,
+    CONSTRAINT fk_videos_gym
+        FOREIGN KEY (gym_id) REFERENCES gyms(id),
+    CONSTRAINT fk_videos_gym_grade_same_gym
+        FOREIGN KEY (gym_id, gym_grade_id) REFERENCES gym_grades(gym_id, id)
 );
 
 CREATE TABLE comments (

@@ -6,6 +6,7 @@ import com.holaclimbing.server.domain.gym.dto.request.CreateGymRequest;
 import com.holaclimbing.server.domain.gym.dto.request.UpdateBusinessHoursRequest;
 import com.holaclimbing.server.domain.gym.dto.response.CreateGymResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymDetailResponse;
+import com.holaclimbing.server.domain.gym.dto.response.GymGradeResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymPhotoResponse;
 import com.holaclimbing.server.domain.gym.dto.response.GymSummaryResponse;
 
@@ -21,6 +22,9 @@ public interface GymService {
 
     /** 암장 상세 조회 (사진 포함). */
     GymDetailResponse getGymDetail(Long gymId);
+
+    /** 암장별 활성 난이도 목록 조회. */
+    List<GymGradeResponse> getGrades(Long gymId);
 
     /** 암장 등록 제안 (status='pending'으로 등록). */
     CreateGymResponse suggestGym(Long userId, CreateGymRequest request);

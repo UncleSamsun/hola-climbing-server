@@ -2,6 +2,7 @@
 -- 운영 schema.sql의 gyms/gym_photos에서 pgvector 컬럼(style_embedding)과
 -- users 참조 FK를 제외한 버전.
 DROP TABLE IF EXISTS gym_photos CASCADE;
+DROP TABLE IF EXISTS gym_grades CASCADE;
 DROP TABLE IF EXISTS gyms CASCADE;
 
 CREATE TABLE gyms (
@@ -23,6 +24,18 @@ CREATE TABLE gyms (
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted_at      TIMESTAMP
+);
+
+CREATE TABLE gym_grades (
+    id               BIGSERIAL PRIMARY KEY,
+    gym_id           BIGINT NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+    label            VARCHAR(50) NOT NULL,
+    difficulty_order INTEGER NOT NULL,
+    is_active        BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE (gym_id, label),
+    UNIQUE (gym_id, id)
 );
 
 CREATE TABLE gym_photos (

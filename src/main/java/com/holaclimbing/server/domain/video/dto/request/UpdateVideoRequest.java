@@ -8,7 +8,6 @@ import jakarta.validation.constraints.Size;
 public record UpdateVideoRequest(
         @Size(max = 100) String title,
         String description,
-        @Size(max = 20) String grade,
         Boolean isPublic
 ) {
 }

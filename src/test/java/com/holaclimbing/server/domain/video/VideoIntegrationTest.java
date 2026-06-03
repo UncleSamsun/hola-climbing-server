@@ -67,7 +67,7 @@ class VideoIntegrationTest {
     @DisplayName("영상 등록 실패 — 자기 소유 prefix가 아닌 objectPath면 403 FORBIDDEN")
     void createVideo_foreignObjectPath_returns403() throws Exception {
         String token = register("a@hola.com", "climberone");
-        var bad = new CreateVideoRequest(null, "stolen", null, null,
+        var bad = new CreateVideoRequest(1L, "stolen", null, 1003L,
                 "videos/uploads/9999/owned-by-someone-else.mp4", null, 45, RECORDED_DATE, true);
         mockMvc.perform(post("/api/videos")
                         .header("Authorization", "Bearer " + token)
@@ -91,7 +91,7 @@ class VideoIntegrationTest {
     void createVideo_success() throws Exception {
         String token = register("a@hola.com", "climberone");
 
-        var req = new CreateVideoRequest(null, "My Send", "a clean ascent", "V5",
+        var req = new CreateVideoRequest(1L, "My Send", "a clean ascent", 1003L,
                 ownedObjectPath(token), null, 45, RECORDED_DATE, true);
         mockMvc.perform(post("/api/videos")
                         .header("Authorization", "Bearer " + token)
@@ -100,6 +100,14 @@ class VideoIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").isNumber())
                 .andExpect(jsonPath("$.data.status").value("pending"))
+                .andExpect(jsonPath("$.data.gymId").value(1))
+                .andExpect(jsonPath("$.data.gymGradeId").doesNotExist())
+                .andExpect(jsonPath("$.data.grade").doesNotExist())
+                .andExpect(jsonPath("$.data.gymGrade.id").value(1003))
+                .andExpect(jsonPath("$.data.gymGrade.gymId").value(1))
+                .andExpect(jsonPath("$.data.gymGrade.label").value("빨강"))
+                .andExpect(jsonPath("$.data.gymGrade.colorHex").doesNotExist())
+                .andExpect(jsonPath("$.data.gymGrade.difficultyOrder").value(30))
                 .andExpect(jsonPath("$.data.streamUrl").exists())
                 .andExpect(jsonPath("$.data.recordedDate").value("2026-06-03"))
                 .andExpect(jsonPath("$.data.viewCount").value(0))
@@ -112,6 +120,8 @@ class VideoIntegrationTest {
         String token = register("a@hola.com", "climberone");
 
         var body = java.util.Map.of(
+                "gymId", 1,
+                "gymGradeId", 1003,
                 "objectPath", ownedObjectPath(token),
                 "title", "MoonBoard session",
                 "recordedDate", "2026-06-03",
@@ -131,6 +141,8 @@ class VideoIntegrationTest {
         String token = register("a@hola.com", "climberone");
 
         var body = java.util.Map.of(
+                "gymId", 1,
+                "gymGradeId", 1003,
                 "objectPath", ownedObjectPath(token),
                 "title", "MoonBoard session",
                 "isPublic", true
@@ -141,6 +153,84 @@ class VideoIntegrationTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("C001"));
+    }
+
+    @Test
+    @DisplayName("영상 등록 실패 — gymId를 누락하면 400")
+    void createVideo_withoutGymId_returns400() throws Exception {
+        String token = register("a@hola.com", "climberone");
+
+        var body = java.util.Map.of(
+                "gymGradeId", 1003,
+                "objectPath", ownedObjectPath(token),
+                "recordedDate", "2026-06-03",
+                "isPublic", true
+        );
+        mockMvc.perform(post("/api/videos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
+    }
+
+    @Test
+    @DisplayName("영상 등록 실패 — gymGradeId를 누락하면 400")
+    void createVideo_withoutGymGradeId_returns400() throws Exception {
+        String token = register("a@hola.com", "climberone");
+
+        var body = java.util.Map.of(
+                "gymId", 1,
+                "objectPath", ownedObjectPath(token),
+                "recordedDate", "2026-06-03",
+                "isPublic", true
+        );
+        mockMvc.perform(post("/api/videos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
+    }
+
+    @Test
+    @DisplayName("영상 등록 실패 — 다른 암장의 난이도를 선택하면 G005")
+    void createVideo_gradeFromOtherGym_returnsG005() throws Exception {
+        String token = register("a@hola.com", "climberone");
+
+        var body = java.util.Map.of(
+                "gymId", 1,
+                "gymGradeId", 1004,
+                "objectPath", ownedObjectPath(token),
+                "recordedDate", "2026-06-03",
+                "isPublic", true
+        );
+        mockMvc.perform(post("/api/videos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("G005"));
+    }
+
+    @Test
+    @DisplayName("영상 등록 실패 — 비활성 난이도를 선택하면 G005")
+    void createVideo_inactiveGrade_returnsG005() throws Exception {
+        String token = register("a@hola.com", "climberone");
+
+        var body = java.util.Map.of(
+                "gymId", 2,
+                "gymGradeId", 1006,
+                "objectPath", ownedObjectPath(token),
+                "recordedDate", "2026-06-03",
+                "isPublic", true
+        );
+        mockMvc.perform(post("/api/videos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("G005"));
     }
 
     @Test
@@ -208,6 +298,9 @@ class VideoIntegrationTest {
         mockMvc.perform(get("/api/videos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1003))
+                .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("빨강"))
+                .andExpect(jsonPath("$.data.content[0].grade").doesNotExist())
                 .andExpect(jsonPath("$.data.hasNext").value(false))
                 .andExpect(jsonPath("$.data.nextCursor").doesNotExist());
     }
@@ -289,13 +382,14 @@ class VideoIntegrationTest {
         String other = register("b@hola.com", "climbertwo");
         long videoId = createVideo(owner, true);
 
-        var body = objectMapper.writeValueAsString(new UpdateVideoRequest("updated title", null, "V8", null));
+        var body = objectMapper.writeValueAsString(new UpdateVideoRequest("updated title", null, null));
         mockMvc.perform(patch("/api/videos/" + videoId)
                         .header("Authorization", "Bearer " + owner)
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.title").value("updated title"))
-                .andExpect(jsonPath("$.data.grade").value("V8"));
+                .andExpect(jsonPath("$.data.gymGrade.label").value("빨강"))
+                .andExpect(jsonPath("$.data.grade").doesNotExist());
 
         mockMvc.perform(patch("/api/videos/" + videoId)
                         .header("Authorization", "Bearer " + other)
@@ -476,7 +570,7 @@ class VideoIntegrationTest {
     void getGymVideos_returnsGymVideos() throws Exception {
         String token = register("a@hola.com", "climberone");
         for (int i = 0; i < 2; i++) {
-            var gymVideo = new CreateVideoRequest(1L, "gym clip", "desc", "V4",
+            var gymVideo = new CreateVideoRequest(1L, "gym clip", "desc", 1002L,
                     ownedObjectPath(token), null, 30, RECORDED_DATE, true);
             mockMvc.perform(post("/api/videos")
                             .header("Authorization", "Bearer " + token)
@@ -484,11 +578,20 @@ class VideoIntegrationTest {
                             .content(objectMapper.writeValueAsString(gymVideo)))
                     .andExpect(status().isCreated());
         }
-        createVideo(token, true);  // gymId 없는 영상 — 암장 목록에서 제외돼야 함
+        var otherGymVideo = new CreateVideoRequest(2L, "other gym clip", "desc", 1004L,
+                ownedObjectPath(token), null, 30, RECORDED_DATE, true);
+        mockMvc.perform(post("/api/videos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(otherGymVideo)))
+                .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/gyms/1/videos"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(2));
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content[0].gymGrade.gymId").value(1))
+                .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("파랑"))
+                .andExpect(jsonPath("$.data.content[0].grade").doesNotExist());
     }
 
     @Test
@@ -542,7 +645,7 @@ class VideoIntegrationTest {
 
     private CreateVideoRequest videoRequest(boolean isPublic) throws Exception {
         // upload-url 발급(자기 소유 prefix)을 거친 objectPath를 사용해야 createVideo가 통과한다.
-        return new CreateVideoRequest(null, "My Send", "a clean ascent", "V5",
+        return new CreateVideoRequest(1L, "My Send", "a clean ascent", 1003L,
                 "REPLACE", null, 45, RECORDED_DATE, isPublic);
     }
 
@@ -574,7 +677,7 @@ class VideoIntegrationTest {
     }
 
     private long createVideo(String token, boolean isPublic) throws Exception {
-        var req = new CreateVideoRequest(null, "My Send", "a clean ascent", "V5",
+        var req = new CreateVideoRequest(1L, "My Send", "a clean ascent", 1003L,
                 ownedObjectPath(token), null, 45, RECORDED_DATE, isPublic);
         return dataOf(mockMvc.perform(post("/api/videos")
                 .header("Authorization", "Bearer " + token)

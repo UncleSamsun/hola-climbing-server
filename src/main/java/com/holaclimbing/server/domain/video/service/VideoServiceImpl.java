@@ -5,6 +5,8 @@ import com.holaclimbing.server.common.exception.error.ErrorCode;
 import com.holaclimbing.server.common.response.CursorCodec;
 import com.holaclimbing.server.common.response.CursorPageResponse;
 import com.holaclimbing.server.common.response.PageResponse;
+import com.holaclimbing.server.domain.gym.domain.GymGrade;
+import com.holaclimbing.server.domain.gym.mapper.GymGradeMapper;
 import com.holaclimbing.server.domain.gym.mapper.GymMapper;
 import com.holaclimbing.server.domain.notification.service.NotificationService;
 import com.holaclimbing.server.domain.video.VideoUploadProperties;
@@ -41,6 +43,7 @@ public class VideoServiceImpl implements VideoService {
     private final VideoMapper videoMapper;
     private final LikeMapper likeMapper;
     private final GymMapper gymMapper;
+    private final GymGradeMapper gymGradeMapper;
     private final NotificationService notificationService;
     private final GcsStorageService gcsStorageService;
     private final GcsProperties gcsProperties;
@@ -69,8 +72,12 @@ public class VideoServiceImpl implements VideoService {
     @Override
     @Transactional
     public VideoDetailResponse createVideo(Long userId, CreateVideoRequest request) {
-        if (request.gymId() != null && gymMapper.findById(request.gymId()) == null) {
+        if (gymMapper.findById(request.gymId()) == null) {
             throw new BusinessException(ErrorCode.GYM_NOT_FOUND);
+        }
+        GymGrade gymGrade = gymGradeMapper.findActiveByGymAndId(request.gymId(), request.gymGradeId());
+        if (gymGrade == null) {
+            throw new BusinessException(ErrorCode.INVALID_GYM_GRADE);
         }
         if (request.durationSeconds() != null
                 && request.durationSeconds() > uploadProperties.maxDurationSeconds()) {
@@ -82,9 +89,9 @@ public class VideoServiceImpl implements VideoService {
         Video video = Video.builder()
                 .userId(userId)
                 .gymId(request.gymId())
+                .gymGradeId(gymGrade.getId())
                 .title(request.title())
                 .description(request.description())
-                .grade(request.grade())
                 .gcsPath(request.objectPath())
                 .thumbnailPath(request.thumbnailPath())
                 .durationSeconds(request.durationSeconds())
@@ -140,8 +147,7 @@ public class VideoServiceImpl implements VideoService {
     public VideoDetailResponse updateVideo(Long userId, Long videoId, UpdateVideoRequest request) {
         Video video = findActiveVideo(videoId);
         requireOwner(video, userId);
-        videoMapper.updateVideo(videoId, request.title(), request.description(),
-                request.grade(), request.isPublic());
+        videoMapper.updateVideo(videoId, request.title(), request.description(), request.isPublic());
         boolean isLiked = likeMapper.exists(userId, videoId);
         return toDetail(videoMapper.findById(videoId), isLiked);
     }

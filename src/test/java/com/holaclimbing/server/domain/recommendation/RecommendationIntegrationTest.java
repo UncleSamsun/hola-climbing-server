@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = {
         "classpath:sql/users-schema.sql",
         "classpath:sql/gyms-schema.sql",
+        "classpath:sql/gyms-data.sql",
         "classpath:sql/videos-schema.sql",
         "classpath:sql/notifications-schema.sql"
 }, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
@@ -71,7 +72,12 @@ class RecommendationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(2))
                 .andExpect(jsonPath("$.data.content[0].source").value("following"))
-                .andExpect(jsonPath("$.data.content[1].source").value("recommended"));
+                .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1002))
+                .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("파랑"))
+                .andExpect(jsonPath("$.data.content[0].grade").doesNotExist())
+                .andExpect(jsonPath("$.data.content[1].source").value("recommended"))
+                .andExpect(jsonPath("$.data.content[1].gymGrade.id").value(1002))
+                .andExpect(jsonPath("$.data.content[1].grade").doesNotExist());
     }
 
     @Test
@@ -98,7 +104,7 @@ class RecommendationIntegrationTest {
         long userId = dataOf(mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())).path("userId").asLong();
         String path = "videos/uploads/" + userId + "/test-" + java.util.UUID.randomUUID() + ".mp4";
-        var request = new CreateVideoRequest(null, "feed clip", "desc", "V4",
+        var request = new CreateVideoRequest(1L, "feed clip", "desc", 1002L,
                 path, null, 30, java.time.LocalDate.of(2026, 6, 3), true);
         mockMvc.perform(post("/api/videos")
                         .header("Authorization", "Bearer " + token)

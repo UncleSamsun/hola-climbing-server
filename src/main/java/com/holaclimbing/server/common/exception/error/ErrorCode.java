@@ -38,6 +38,7 @@ public enum ErrorCode {
     GYM_OUT_OF_RANGE(HttpStatus.FORBIDDEN, "G002", "암장 반경 내에 있지 않습니다."),
     ALREADY_REVIEWED(HttpStatus.CONFLICT, "G003", "이미 리뷰를 작성한 암장입니다."),
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "G004", "리뷰를 찾을 수 없습니다."),
+    INVALID_GYM_GRADE(HttpStatus.BAD_REQUEST, "G005", "암장 난이도가 올바르지 않습니다."),
 
     // ===== 알림 F-08 (N) =====
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "알림을 찾을 수 없습니다."),
