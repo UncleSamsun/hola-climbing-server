@@ -101,6 +101,7 @@ class VideoIntegrationTest {
                 .andExpect(jsonPath("$.data.id").isNumber())
                 .andExpect(jsonPath("$.data.status").value("pending"))
                 .andExpect(jsonPath("$.data.gymId").value(1))
+                .andExpect(jsonPath("$.data.gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.gymGradeId").doesNotExist())
                 .andExpect(jsonPath("$.data.grade").doesNotExist())
                 .andExpect(jsonPath("$.data.gymGrade.id").value(1003))
@@ -298,6 +299,7 @@ class VideoIntegrationTest {
         mockMvc.perform(get("/api/videos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.content[0].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1003))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("빨강"))
                 .andExpect(jsonPath("$.data.content[0].grade").doesNotExist())
@@ -370,6 +372,7 @@ class VideoIntegrationTest {
 
         mockMvc.perform(get("/api/videos/" + videoId))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.viewCount").value(1));
         mockMvc.perform(get("/api/videos/" + videoId))
                 .andExpect(jsonPath("$.data.viewCount").value(2));
@@ -611,6 +614,7 @@ class VideoIntegrationTest {
         mockMvc.perform(get("/api/gyms/1/videos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content[0].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.gymId").value(1))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("파랑"))
                 .andExpect(jsonPath("$.data.content[0].grade").doesNotExist());

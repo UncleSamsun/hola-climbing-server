@@ -13,6 +13,7 @@ public record RecommendedVideoResponse(
         Long id,
         Long userId,
         Long gymId,
+        String gymName,
         GymGradeResponse gymGrade,
         String title,
         String thumbnailPath,
@@ -27,7 +28,7 @@ public record RecommendedVideoResponse(
 ) {
     public static RecommendedVideoResponse of(Video video, String streamUrl, String source) {
         return new RecommendedVideoResponse(
-                video.getId(), video.getUserId(), video.getGymId(), gymGradeOf(video), video.getTitle(),
+                video.getId(), video.getUserId(), video.getGymId(), video.getGymName(), gymGradeOf(video), video.getTitle(),
                 video.getThumbnailPath(), streamUrl, video.getDurationSeconds(), video.getRecordedDate(), video.getViewCount(),
                 video.getLikeCount(), video.getCommentCount(), source, video.getCreatedAt());
     }

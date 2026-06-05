@@ -20,6 +20,7 @@ public class Video {
     private Long id;
     private Long userId;
     private Long gymId;
+    private String gymName;
     private Long gymGradeId;
     private String gymGradeLabel;
     private int gymGradeDifficultyOrder;

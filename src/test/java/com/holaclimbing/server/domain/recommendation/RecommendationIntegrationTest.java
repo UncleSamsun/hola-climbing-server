@@ -72,10 +72,12 @@ class RecommendationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(2))
                 .andExpect(jsonPath("$.data.content[0].source").value("following"))
+                .andExpect(jsonPath("$.data.content[0].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1002))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("파랑"))
                 .andExpect(jsonPath("$.data.content[0].grade").doesNotExist())
                 .andExpect(jsonPath("$.data.content[1].source").value("recommended"))
+                .andExpect(jsonPath("$.data.content[1].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[1].gymGrade.id").value(1002))
                 .andExpect(jsonPath("$.data.content[1].grade").doesNotExist());
     }

@@ -4,6 +4,7 @@
 
     <sql id="columns">
         videos.id, videos.user_id, videos.gym_id, videos.gym_grade_id,
+        g.name AS gym_name,
         gg.label AS gym_grade_label,
         gg.difficulty_order AS gym_grade_difficulty_order,
         videos.title, videos.description,
@@ -26,6 +27,7 @@
     <select id="findById" resultType="com.holaclimbing.server.domain.video.domain.Video">
         SELECT <include refid="columns"/>
         FROM videos
+        JOIN gyms g ON g.id = videos.gym_id
         JOIN gym_grades gg ON gg.id = videos.gym_grade_id AND gg.gym_id = videos.gym_id
         WHERE videos.id = #{id} AND videos.deleted_at IS NULL
     </select>
@@ -44,6 +46,7 @@
     <select id="findFeedByCursor" resultType="com.holaclimbing.server.domain.video.domain.Video">
         SELECT <include refid="columns"/>
         FROM videos
+        JOIN gyms g ON g.id = videos.gym_id
         JOIN gym_grades gg ON gg.id = videos.gym_grade_id AND gg.gym_id = videos.gym_id
         WHERE videos.is_public = TRUE AND videos.deleted_at IS NULL AND videos.status &lt;&gt; 'failed'
         <if test="userId != null">
@@ -63,6 +66,7 @@
     <select id="findByGym" resultType="com.holaclimbing.server.domain.video.domain.Video">
         SELECT <include refid="columns"/>
         FROM videos
+        JOIN gyms g ON g.id = videos.gym_id
         JOIN gym_grades gg ON gg.id = videos.gym_grade_id AND gg.gym_id = videos.gym_id
         WHERE videos.is_public = TRUE AND videos.deleted_at IS NULL AND videos.status &lt;&gt; 'failed'
           AND videos.gym_id = #{gymId}

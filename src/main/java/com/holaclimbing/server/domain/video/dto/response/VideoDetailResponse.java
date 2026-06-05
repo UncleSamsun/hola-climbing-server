@@ -10,6 +10,7 @@ public record VideoDetailResponse(
         Long id,
         Long userId,
         Long gymId,
+        String gymName,
         GymGradeResponse gymGrade,
         String title,
         String description,
@@ -31,7 +32,7 @@ public record VideoDetailResponse(
     /** streamUrl은 GCS 읽기 Signed URL — 서비스 계층에서 발급해 주입한다. */
     public static VideoDetailResponse of(Video video, boolean isLiked, String streamUrl) {
         return new VideoDetailResponse(
-                video.getId(), video.getUserId(), video.getGymId(), gymGradeOf(video), video.getTitle(),
+                video.getId(), video.getUserId(), video.getGymId(), video.getGymName(), gymGradeOf(video), video.getTitle(),
                 video.getDescription(), video.getGcsPath(),
                 video.getGcsStreamingPath(), video.getThumbnailPath(), streamUrl,
                 video.getDurationSeconds(), video.getRecordedDate(), video.getStatus(), video.isPublic(),
