@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.holaclimbing.server.domain.admin.mapper.AdminGymMapper">
+
+    <sql id="columns">
+        id, name, address, lat, lng, description, phone, website, thumbnail_url,
+        business_hours, region_code, rating_avg, rating_count, status, created_by,
+        created_at, updated_at, deleted_at
+    </sql>
+
+    <select id="search" resultType="com.holaclimbing.server.domain.gym.domain.Gym">
+        SELECT <include refid="columns"/>
+        FROM gyms
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND name ILIKE '%' || #{keyword} || '%'
+        </if>
+        <if test="regionCode != null and regionCode != ''">
+            AND region_code = #{regionCode}
+        </if>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countSearch" resultType="long">
+        SELECT COUNT(*)
+        FROM gyms
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND name ILIKE '%' || #{keyword} || '%'
+        </if>
+        <if test="regionCode != null and regionCode != ''">
+            AND region_code = #{regionCode}
+        </if>
+    </select>
+
+    <select id="findByIdAnyStatus" resultType="com.holaclimbing.server.domain.gym.domain.Gym">
+        SELECT <include refid="columns"/>
+        FROM gyms
+        WHERE id = #{gymId} AND deleted_at IS NULL
+    </select>
+
+    <update id="updateStatus">
+        UPDATE gyms
+        SET status = #{status}, updated_at = NOW()
+        WHERE id = #{gymId} AND deleted_at IS NULL
+    </update>
+
+    <update id="updateGym">
+        UPDATE gyms
+        SET name = #{name},
+            address = #{address},
+            lat = #{lat},
+            lng = #{lng},
+            description = #{description},
+            phone = #{phone},
+            website = #{website},
+            business_hours = #{businessHours}::jsonb,
+            region_code = #{regionCode},
+            updated_at = NOW()
+        WHERE id = #{gymId} AND deleted_at IS NULL
+    </update>
+
+</mapper>
