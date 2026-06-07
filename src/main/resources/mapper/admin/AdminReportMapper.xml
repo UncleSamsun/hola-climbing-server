@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.holaclimbing.server.domain.admin.mapper.AdminReportMapper">
+
+    <sql id="columns">
+        id, reporter_id, target_type, target_id, category, reason,
+        status, reviewed_by, reviewed_at, created_at
+    </sql>
+
+    <select id="findById" resultType="com.holaclimbing.server.domain.report.domain.Report">
+        SELECT <include refid="columns"/>
+        FROM reports
+        WHERE id = #{reportId}
+    </select>
+
+    <select id="search" resultType="com.holaclimbing.server.domain.report.domain.Report">
+        SELECT <include refid="columns"/>
+        FROM reports
+        WHERE 1 = 1
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="targetType != null and targetType != ''">
+            AND target_type = #{targetType}
+        </if>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countSearch" resultType="long">
+        SELECT COUNT(*)
+        FROM reports
+        WHERE 1 = 1
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="targetType != null and targetType != ''">
+            AND target_type = #{targetType}
+        </if>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+    </select>
+
+    <update id="updateStatus">
+        UPDATE reports
+        SET status = #{status},
+            reviewed_by = #{reviewedBy},
+            reviewed_at = NOW()
+        WHERE id = #{reportId}
+    </update>
+
+</mapper>
