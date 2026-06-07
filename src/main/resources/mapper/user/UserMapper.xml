@@ -26,6 +26,32 @@
         WHERE email = #{email} AND deleted_at IS NULL
     </select>
 
+    <select id="searchAdminUsers" resultType="com.holaclimbing.server.domain.user.domain.User">
+        SELECT <include refid="columns"/>
+        FROM users
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">AND status = #{status}</if>
+        <if test="role != null and role != ''">AND role = #{role}</if>
+        <if test="emailVerified != null">AND email_verified = #{emailVerified}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (email ILIKE '%' || #{keyword} || '%' OR nickname ILIKE '%' || #{keyword} || '%')
+        </if>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminUsers" resultType="long">
+        SELECT COUNT(*)
+        FROM users
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">AND status = #{status}</if>
+        <if test="role != null and role != ''">AND role = #{role}</if>
+        <if test="emailVerified != null">AND email_verified = #{emailVerified}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (email ILIKE '%' || #{keyword} || '%' OR nickname ILIKE '%' || #{keyword} || '%')
+        </if>
+    </select>
+
     <select id="findByEmailVerificationToken" resultType="com.holaclimbing.server.domain.user.domain.User">
         SELECT <include refid="columns"/>
         FROM users

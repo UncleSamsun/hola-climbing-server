@@ -4,6 +4,8 @@ import com.holaclimbing.server.domain.user.domain.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 @Mapper
 public interface UserMapper {
 
@@ -15,6 +17,20 @@ public interface UserMapper {
 
     /** 로그인용 이메일 조회 (soft-delete 제외). 없으면 null. */
     User findByEmail(String email);
+
+    /** 운영자 회원 목록 검색. */
+    List<User> searchAdminUsers(@Param("status") String status,
+                                @Param("role") String role,
+                                @Param("keyword") String keyword,
+                                @Param("emailVerified") Boolean emailVerified,
+                                @Param("size") int size,
+                                @Param("offset") int offset);
+
+    /** 운영자 회원 검색 총 개수. */
+    long countAdminUsers(@Param("status") String status,
+                         @Param("role") String role,
+                         @Param("keyword") String keyword,
+                         @Param("emailVerified") Boolean emailVerified);
 
     /** 이메일 인증 토큰으로 조회 (soft-delete 제외). 없으면 null. */
     User findByEmailVerificationToken(String token);
