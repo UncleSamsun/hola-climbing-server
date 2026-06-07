@@ -128,6 +128,25 @@ mvn test
 통합 테스트는 **Testcontainers** 로 PostgreSQL·Redis 컨테이너를 자동 기동하므로,
 Docker만 실행 중이면 별도 인프라 준비 없이 전체 스위트를 검증할 수 있습니다.
 
+### 운영 배포 체크리스트
+
+- 운영 DB에는 `db/schema.sql` 또는 필요한 수동 migration을 먼저 적용합니다.
+  이미 운영 중인 DB라면 `db/manual-migrations/2026-06-06-admin-operations.sql`처럼
+  idempotent migration을 사용합니다.
+- `JWT_SECRET`, `SPRING_DATASOURCE_*`, `SPRING_DATA_REDIS_*`, `GCS_BUCKET`,
+  GCS 자격증명, `CORS_ALLOWED_ORIGINS`, `AI_ANALYSIS_URL`은 운영 값으로 분리합니다.
+- 최초 운영자 계정은 일반 회원가입과 이메일 인증을 완료한 뒤 DB에서 역할을 승격합니다.
+  역할 변경 후에는 다시 로그인해야 `ADMIN` role claim이 포함된 JWT가 발급됩니다.
+
+```sql
+UPDATE users
+SET role = 'ADMIN', updated_at = NOW()
+WHERE email = 'admin@example.com' AND deleted_at IS NULL;
+```
+
+- `/actuator/health`를 로드밸런서 헬스 체크로 사용하고, 운영 로그에는 `requestId`를 함께 남깁니다.
+- 외부 공개 환경에서는 HTTPS/reverse proxy, DB 백업, Redis 가용성, Swagger UI 공개 여부를 별도 점검합니다.
+
 ---
 
 ## 전체 기능 설명
@@ -220,3 +239,27 @@ hola-climbing-server/
 
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - 에러 코드 목록: `GET /api/docs/error-codes`
+
+## 운영자 API
+
+`/api/admin/**`는 `ROLE_ADMIN` 토큰이 필요합니다. 운영자가 회원 상태를 정지하거나
+콘텐츠를 삭제하는 변경 작업은 `admin_audit_logs`에 기록됩니다.
+
+- `GET /api/admin/dashboard`
+- `GET /api/admin/audit-logs`
+- `GET /api/admin/gyms`
+- `GET /api/admin/gyms/{gymId}`
+- `POST /api/admin/gyms`
+- `PATCH /api/admin/gyms/{gymId}`
+- `POST /api/admin/gyms/{gymId}/approve`
+- `POST /api/admin/gyms/{gymId}/reject`
+- `POST /api/admin/gyms/{gymId}/close`
+- `PUT /api/admin/gyms/{gymId}/grades`
+- `POST /api/admin/gyms/import/preview`
+- `POST /api/admin/gyms/import`
+- `GET /api/admin/users`
+- `GET /api/admin/users/{userId}`
+- `PATCH /api/admin/users/{userId}/status`
+- `POST /api/admin/users/{userId}/revoke-tokens`
+- `GET /api/admin/reports`
+- `PATCH /api/admin/reports/{reportId}/status`
