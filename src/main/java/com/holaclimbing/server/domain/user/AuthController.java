@@ -52,13 +52,13 @@ public class AuthController {
                 .body(ApiResponse.success(response, "인증 메일을 발송했습니다. 메일 확인 후 로그인해 주세요."));
     }
 
-    @ApiErrorCodes({USER_NOT_FOUND, PASSWORD_MISMATCH, EMAIL_NOT_VERIFIED})
+    @ApiErrorCodes({USER_NOT_FOUND, PASSWORD_MISMATCH, EMAIL_NOT_VERIFIED, USER_SUSPENDED})
     @PostMapping("/login")
     public ApiResponse<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(userService.login(request));
     }
 
-    @ApiErrorCodes({INVALID_TOKEN, EXPIRED_TOKEN, USER_NOT_FOUND})
+    @ApiErrorCodes({INVALID_TOKEN, EXPIRED_TOKEN, USER_NOT_FOUND, USER_SUSPENDED})
     @PostMapping("/refresh")
     public ApiResponse<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return ApiResponse.success(userService.refresh(request.refreshToken()));

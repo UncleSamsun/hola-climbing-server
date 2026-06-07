@@ -34,6 +34,9 @@ public interface UserMapper {
     /** 마지막 로그인 시각 갱신. */
     int updateLastLoginAt(Long id);
 
+    /** 회원 운영 상태 변경. */
+    int updateStatus(@Param("id") Long id, @Param("status") String status);
+
     /** 프로필 부분 수정 — null이 아닌 필드만 갱신. */
     int updateProfile(@Param("id") Long id,
                       @Param("nickname") String nickname,

@@ -80,6 +80,7 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
+        requireActive(user);
         if (user.getPasswordHash() == null
                 || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BusinessException(ErrorCode.PASSWORD_MISMATCH);
@@ -115,6 +116,7 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
+        requireActive(user);
         // 회전 — 사용된 refresh 토큰을 잔여 수명 동안 블랙리스트에 등록(1회용).
         long remainingMs = claims.getExpiration().getTime() - System.currentTimeMillis();
         tokenBlacklist.blacklist(jti, Duration.ofMillis(remainingMs));
@@ -209,6 +211,12 @@ public class UserServiceImpl implements UserService {
         String accessToken = tokenProvider.createAccessToken(user.getId(), user.getEmail());
         String refreshToken = tokenProvider.createRefreshToken(user.getId());
         return TokenResponse.of(accessToken, refreshToken);
+    }
+
+    private void requireActive(User user) {
+        if (!"ACTIVE".equals(user.getStatus())) {
+            throw new BusinessException(ErrorCode.USER_SUSPENDED);
+        }
     }
 
     private boolean parseIsRefreshToken(String token) {

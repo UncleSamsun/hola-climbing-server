@@ -4,7 +4,7 @@
 
     <sql id="columns">
         id, email, password_hash, email_verified, email_verification_token,
-        provider, provider_id, nickname, profile_image, bio,
+        provider, provider_id, nickname, profile_image, bio, role, status,
         last_login_at, created_at, updated_at, deleted_at
     </sql>
 
@@ -62,6 +62,13 @@
         WHERE id = #{id}
     </update>
 
+    <update id="updateStatus">
+        UPDATE users
+        SET status = #{status},
+            updated_at = NOW()
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
     <update id="updateProfile">
         UPDATE users
         <set>
@@ -82,7 +89,8 @@
 
     <update id="softDelete">
         UPDATE users
-        SET deleted_at = NOW(),
+        SET status = 'DELETED',
+            deleted_at = NOW(),
             updated_at = NOW()
         WHERE id = #{id} AND deleted_at IS NULL
     </update>

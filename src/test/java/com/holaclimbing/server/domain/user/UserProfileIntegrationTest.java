@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
@@ -56,6 +57,9 @@ class UserProfileIntegrationTest {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     @DisplayName("내 프로필 조회 실패 — 토큰 없이 호출하면 401")
@@ -262,6 +266,24 @@ class UserProfileIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new LoginRequest("quit@hola.com", PASSWORD))))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("회원 탈퇴 — 탈퇴 row status를 DELETED로 남긴다")
+    void withdraw_marksStatusDeleted() throws Exception {
+        TestUser me = register("quit@hola.com", "quitter");
+
+        mockMvc.perform(delete("/api/users/me")
+                        .header("Authorization", "Bearer " + me.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new WithdrawRequest(PASSWORD, null))))
+                .andExpect(status().isOk());
+
+        String status = jdbcTemplate.queryForObject(
+                "SELECT status FROM users WHERE id = ?",
+                String.class,
+                me.id());
+        assertThat(status).isEqualTo("DELETED");
     }
 
     @Test

@@ -33,6 +33,8 @@ public class User {
     private String nickname;
     private String profileImage;
     private String bio;
+    private String role;
+    private String status;
 
     // 메타
     private LocalDateTime lastLoginAt;

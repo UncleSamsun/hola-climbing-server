@@ -50,7 +50,7 @@ class ApiErrorCodesDocumentationTest {
                 .path("post")
                 .path("responses");
 
-        // login은 USER_NOT_FOUND(404)·PASSWORD_MISMATCH(401)·EMAIL_NOT_VERIFIED(403)을 낸다.
+        // login은 USER_NOT_FOUND(404)·PASSWORD_MISMATCH(401)·EMAIL_NOT_VERIFIED/USER_SUSPENDED(403)을 낸다.
         assertThat(loginResponses.has("401")).isTrue();
         assertThat(loginResponses.has("403")).isTrue();
         assertThat(loginResponses.has("404")).isTrue();
@@ -65,5 +65,14 @@ class ApiErrorCodesDocumentationTest {
         assertThat(u003.isMissingNode()).isFalse();
         assertThat(u003.path("value").path("code").asText()).isEqualTo("U003");
         assertThat(u003.path("value").path("isSuccess").asBoolean()).isFalse();
+
+        JsonNode u012 = loginResponses
+                .path("403")
+                .path("content")
+                .path("application/json")
+                .path("examples")
+                .path("U012");
+        assertThat(u012.isMissingNode()).isFalse();
+        assertThat(u012.path("value").path("code").asText()).isEqualTo("U012");
     }
 }

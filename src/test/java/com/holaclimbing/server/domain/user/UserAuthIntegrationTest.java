@@ -128,6 +128,19 @@ class UserAuthIntegrationTest {
     }
 
     @Test
+    @DisplayName("로그인 실패 — 정지 회원은 403 U012")
+    void login_suspendedUser_returns403() throws Exception {
+        signup(EMAIL, PASSWORD, NICKNAME).andExpect(status().isCreated());
+        verifyEmailOf(EMAIL);
+        var user = userMapper.findByEmail(EMAIL);
+        userMapper.updateStatus(user.getId(), "SUSPENDED");
+
+        login(EMAIL, PASSWORD)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("U012"));
+    }
+
+    @Test
     @DisplayName("골든 패스 — 회원가입→이메일 인증→로그인 시 토큰이 발급된다")
     void verifyEmailThenLogin_success() throws Exception {
         signup(EMAIL, PASSWORD, NICKNAME).andExpect(status().isCreated());
@@ -179,6 +192,22 @@ class UserAuthIntegrationTest {
                 .andExpect(status().isOk()));
         assertThat(data.path("accessToken").asText()).isNotBlank();
         assertThat(data.path("refreshToken").asText()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("토큰 재발급 실패 — 정지 회원은 403 U012")
+    void refresh_suspendedUser_returns403() throws Exception {
+        signup(EMAIL, PASSWORD, NICKNAME).andExpect(status().isCreated());
+        verifyEmailOf(EMAIL);
+        String refreshToken = dataOf(login(EMAIL, PASSWORD)).path("refreshToken").asText();
+        var user = userMapper.findByEmail(EMAIL);
+        userMapper.updateStatus(user.getId(), "SUSPENDED");
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RefreshRequest(refreshToken))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("U012"));
     }
 
     @Test
