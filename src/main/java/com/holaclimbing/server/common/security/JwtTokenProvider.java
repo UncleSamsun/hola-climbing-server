@@ -17,7 +17,7 @@ import java.util.UUID;
  * JWT Access/Refresh 토큰 발급 + 파싱 + 검증 유틸.
  * - subject: userId (Long → String)
  * - claim "type": "access" | "refresh"
- * - claim "email": Access 토큰에만
+ * - claim "email", "role": Access 토큰에만
  */
 @Component
 @RequiredArgsConstructor
@@ -25,6 +25,7 @@ public class JwtTokenProvider {
 
     public static final String CLAIM_TYPE = "type";
     public static final String CLAIM_EMAIL = "email";
+    public static final String CLAIM_ROLE = "role";
     public static final String TYPE_ACCESS = "access";
     public static final String TYPE_REFRESH = "refresh";
 
@@ -36,17 +37,17 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(props.secret().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String createAccessToken(Long userId, String email) {
-        return createToken(userId, email, TYPE_ACCESS,
+    public String createAccessToken(Long userId, String email, String role) {
+        return createToken(userId, email, role, TYPE_ACCESS,
                 Duration.ofMinutes(props.accessTokenValidityMinutes()));
     }
 
     public String createRefreshToken(Long userId) {
-        return createToken(userId, null, TYPE_REFRESH,
+        return createToken(userId, null, null, TYPE_REFRESH,
                 Duration.ofDays(props.refreshTokenValidityDays()));
     }
 
-    private String createToken(Long userId, String email, String type, Duration validity) {
+    private String createToken(Long userId, String email, String role, String type, Duration validity) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + validity.toMillis());
 
@@ -60,6 +61,9 @@ public class JwtTokenProvider {
 
         if (email != null) {
             builder.claim(CLAIM_EMAIL, email);
+        }
+        if (role != null) {
+            builder.claim(CLAIM_ROLE, role);
         }
 
         return builder.signWith(key, Jwts.SIG.HS256).compact();

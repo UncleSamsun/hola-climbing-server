@@ -30,8 +30,7 @@ import java.util.List;
  * - Session stateless (JWT 기반)
  * - JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 등록
  * - 401/403 핸들러는 공통 ApiResponse 포맷으로 응답
- * - 현재는 .anyRequest().permitAll() → 개발 편의 최대화
- * - 발표 직전 → .authenticated()로 강화 + 필요한 API에 @PreAuthorize
+ * - 명시된 공개 API 외에는 기본 인증 필요
  */
 @Configuration
 @RequiredArgsConstructor
@@ -58,6 +57,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // 인증 관련 공개 API (회원가입/로그인/토큰재발급/이메일인증/중복확인)
                         .requestMatchers("/api/auth/**").permitAll()
                         // 문서/모니터링
@@ -66,12 +66,15 @@ public class SecurityConfig {
                                 "/v1/api-docs/**",
                                 "/actuator/**",
                                 "/api/docs/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/ping").permitAll()
                         // WebSocket 핸드셰이크 — 인증은 StompHandshakeInterceptor가 담당
                         .requestMatchers("/ws/**").permitAll()
                         // 공개 조회 (영상 피드, 암장 검색 등)
                         .requestMatchers(HttpMethod.GET,
                                 "/api/videos/**",
                                 "/api/gyms/**").permitAll()
+                        // 운영자 API
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 본인 인증이 필요한 회원 API (내 프로필, 팔로우/차단 변경)
                         .requestMatchers("/api/users/me", "/api/users/me/**").authenticated()
                         .requestMatchers(HttpMethod.POST,
@@ -80,6 +83,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE,
                                 "/api/users/*/follow",
                                 "/api/users/*/block").authenticated()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/users/*",
+                                "/api/users/*/followers",
+                                "/api/users/*/following").permitAll()
                         // 즐겨찾기 — 본인 전용
                         .requestMatchers("/api/favorites/**").authenticated()
                         // 알림 — 본인 전용
@@ -87,11 +94,13 @@ public class SecurityConfig {
                         // 신고 — 등록은 인증 필요
                         .requestMatchers(HttpMethod.POST, "/api/reports").authenticated()
                         // 약관 — 조회는 공개, 동의 기록은 인증 필요
+                        .requestMatchers(HttpMethod.GET, "/api/terms").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/terms/agree").authenticated()
                         // 채팅 REST — 본인 전용
                         .requestMatchers("/api/chats/**").authenticated()
                         // 통계 — 내 통계·달력은 인증 필요 (특정 사용자 통계는 공개)
                         .requestMatchers(HttpMethod.GET, "/api/stats/me", "/api/stats/me/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/stats/users/**").permitAll()
                         // 클라이밍 기록 — 작성·조회·수정·삭제 모두 인증 필요
                         .requestMatchers("/api/climbing-logs", "/api/climbing-logs/**").authenticated()
                         // 추천 — 본인 홈 피드
@@ -107,9 +116,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/gyms/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/gyms/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/gyms/**").authenticated()
-                        // 개발 단계: 그 외도 일단 다 통과
-                        // TODO(release): 아래 줄을 .authenticated()로 바꾸고 보호 필요 API에 @PreAuthorize
-                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

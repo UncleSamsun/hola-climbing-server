@@ -208,7 +208,7 @@ public class UserServiceImpl implements UserService {
     }
 
     private TokenResponse issueTokens(User user) {
-        String accessToken = tokenProvider.createAccessToken(user.getId(), user.getEmail());
+        String accessToken = tokenProvider.createAccessToken(user.getId(), user.getEmail(), user.getRole());
         String refreshToken = tokenProvider.createRefreshToken(user.getId());
         return TokenResponse.of(accessToken, refreshToken);
     }

@@ -69,6 +69,13 @@
         WHERE id = #{id} AND deleted_at IS NULL
     </update>
 
+    <update id="updateRole">
+        UPDATE users
+        SET role = #{role},
+            updated_at = NOW()
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
     <update id="updateProfile">
         UPDATE users
         <set>

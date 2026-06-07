@@ -38,6 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String HEADER = "Authorization";
     private static final String PREFIX = "Bearer ";
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
     private static final String ROLE_USER = "ROLE_USER";
 
     private final JwtTokenProvider tokenProvider;
@@ -77,8 +78,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
+            String role = claims.get(JwtTokenProvider.CLAIM_ROLE, String.class);
+            String authority = "ADMIN".equals(role) ? ROLE_ADMIN : ROLE_USER;
             var auth = new UsernamePasswordAuthenticationToken(
-                    userId, null, List.of(new SimpleGrantedAuthority(ROLE_USER)));
+                    userId, null, List.of(new SimpleGrantedAuthority(authority)));
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
         } catch (ExpiredJwtException e) {
