@@ -120,7 +120,7 @@ public class GcsStorageService {
      * 그래야 PUT/GET이 실제로 그 엔드포인트로 향한다.
      */
     private void applyCustomHostName(List<Storage.SignUrlOption> opts) {
-        String host = storage.getOptions().getHost();
+        String host = normalizedStorageHost();
         if (host != null && !DEFAULT_GCS_HOST.equals(host)) {
             opts.add(Storage.SignUrlOption.withHostName(host));
         }
@@ -132,10 +132,21 @@ public class GcsStorageService {
      * 발급된 URL을 그대로 쓰면 SSL 핸드셰이크에서 깨진다. host 스킴이 http면 동일하게 맞춰준다.
      */
     private String normalizeSchemeForCustomHost(String signedUrl) {
-        String host = storage.getOptions().getHost();
+        String host = normalizedStorageHost();
         if (host != null && host.startsWith("http://") && signedUrl.startsWith("https://")) {
             return "http://" + signedUrl.substring("https://".length());
         }
         return signedUrl;
+    }
+
+    private String normalizedStorageHost() {
+        String host = storage.getOptions().getHost();
+        if (host == null) {
+            return null;
+        }
+        while (host.endsWith("/")) {
+            host = host.substring(0, host.length() - 1);
+        }
+        return host;
     }
 }
