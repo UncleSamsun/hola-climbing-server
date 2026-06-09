@@ -57,7 +57,7 @@ AI 분석은 별도의 Python 워커가 수행하며, 백엔드는 분석 요청
 
 - **영상 바이너리는 서버를 거치지 않는다** — GCS Signed URL로 클라이언트가 직접 업로드/재생
 - **WebSocket은 Spring Boot 전담** — 실시간 채팅은 백엔드에서 처리, Python은 분석만
-- 모든 응답은 `ApiResponse<T>` 래퍼로 통일, 페이지 응답은 `PageResponse<T>`
+- 모든 응답은 `ApiResponse<T>` 래퍼로 통일, 목록 응답은 성격에 따라 `PageResponse<T>` 또는 `CursorPageResponse<T>`
 - 모든 오류는 `ErrorCode` enum + `BusinessException` + `GlobalExceptionHandler`로 일원화
 - 도메인 단위 패키지 구조 (`domain/{도메인}` → Controller · Service · Mapper · DTO · Domain)
 - JSON 직렬화는 `camelCase`, 식별자는 `Long`(BIGSERIAL)
@@ -225,7 +225,7 @@ hola-climbing-server/
 │   └── V1__init.sql                # Flyway fresh DB 초기 migration
 ├── src/main/java/com/holaclimbing/server/
 │   ├── common/                     # 공통 — 응답 래퍼, 예외, 시큐리티, 설정
-│   │   ├── response/               #   ApiResponse · PageResponse
+│   │   ├── response/               #   ApiResponse · PageResponse · CursorPageResponse
 │   │   ├── exception/              #   ErrorCode · BusinessException · GlobalExceptionHandler
 │   │   ├── security/               #   JWT 필터 · SecurityConfig
 │   │   └── config/                 #   Jackson · Swagger 등

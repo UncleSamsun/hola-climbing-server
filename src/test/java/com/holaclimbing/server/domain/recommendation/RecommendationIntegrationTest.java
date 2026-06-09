@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -74,7 +75,9 @@ class RecommendationIntegrationTest {
 
         mockMvc.perform(get("/api/recommendations/videos").header("Authorization", "Bearer " + viewer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.totalElements").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].source").value("following"))
                 .andExpect(jsonPath("$.data.content[0].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1002))
@@ -94,7 +97,9 @@ class RecommendationIntegrationTest {
 
         mockMvc.perform(get("/api/recommendations/videos").header("Authorization", "Bearer " + viewer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(0));
+                .andExpect(jsonPath("$.data.content.length()").value(0))
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.totalElements").doesNotExist());
     }
 
     @Test
@@ -111,7 +116,9 @@ class RecommendationIntegrationTest {
 
         mockMvc.perform(get("/api/recommendations/videos").header("Authorization", "Bearer " + viewer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(0));
+                .andExpect(jsonPath("$.data.content.length()").value(0))
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.totalElements").doesNotExist());
     }
 
     @Test
@@ -127,7 +134,9 @@ class RecommendationIntegrationTest {
 
         mockMvc.perform(get("/api/recommendations/videos").header("Authorization", "Bearer " + viewer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.totalElements").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].source").value("recommended"))
                 .andExpect(jsonPath("$.data.content[0].gymName").value("ClimbingPark Hongdae"))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1005))
@@ -152,11 +161,69 @@ class RecommendationIntegrationTest {
 
         mockMvc.perform(get("/api/recommendations/videos").header("Authorization", "Bearer " + viewer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.totalElements").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].source").value("following"))
                 .andExpect(jsonPath("$.data.content[0].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[1].source").value("recommended"))
                 .andExpect(jsonPath("$.data.content[1].gymName").value("ClimbingPark Hongdae"));
+    }
+
+    @Test
+    @DisplayName("홈 피드 — 커서 기반으로 다음 페이지를 조회한다")
+    void getVideoFeed_cursorPagination() throws Exception {
+        String viewer = register("viewer-cursor@hola.com", "viewer");
+        String firstUploader = register("cursor-first@hola.com", "cursorfirst");
+        String secondUploader = register("cursor-second@hola.com", "cursorsecond");
+        String thirdUploader = register("cursor-third@hola.com", "cursorthird");
+
+        createVideo(firstUploader);
+        createVideo(secondUploader);
+        createVideo(thirdUploader);
+
+        JsonNode firstPage = dataOf(mockMvc.perform(get("/api/recommendations/videos")
+                        .param("size", "2")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.nextCursor").isString())
+                .andExpect(jsonPath("$.data.hasNext").value(true))
+                .andExpect(jsonPath("$.data.totalElements").doesNotExist())
+                .andExpect(jsonPath("$.data.totalPages").doesNotExist())
+                .andExpect(jsonPath("$.data.page").doesNotExist()));
+
+        String cursor = firstPage.path("nextCursor").asText();
+
+        mockMvc.perform(get("/api/recommendations/videos")
+                        .param("size", "2")
+                        .param("cursor", cursor)
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].title").value("feed clip"))
+                .andExpect(jsonPath("$.data.nextCursor").doesNotExist())
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.totalElements").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("홈 피드 실패 — 잘못된 커서는 400")
+    void getVideoFeed_invalidCursor_returns400() throws Exception {
+        String viewer = register("viewer-invalid-cursor@hola.com", "viewer");
+
+        mockMvc.perform(get("/api/recommendations/videos")
+                        .param("cursor", "!!!not-base64!!!")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isBadRequest());
+
+        String missingPayloadCursor = Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString("{}".getBytes(StandardCharsets.UTF_8));
+        mockMvc.perform(get("/api/recommendations/videos")
+                        .param("cursor", missingPayloadCursor)
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

@@ -19,7 +19,7 @@
                    v.duration_seconds, v.recorded_date, v.file_size_bytes, v.mime_type,
                    v.view_count, v.like_count, v.comment_count, v.status, v.is_public,
                    v.created_at, v.updated_at, v.deleted_at,
-                   (f.id IS NOT NULL) AS is_following,
+                   CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS following_rank,
                    CASE
                        WHEN viewer.style_embedding IS NOT NULL AND g.style_embedding IS NOT NULL
                        THEN (viewer.style_embedding &lt;=&gt; g.style_embedding)
@@ -39,6 +39,11 @@
                   WHERE ub.blocker_id = #{userId}
                     AND ub.blocked_id = v.user_id
               )
+        ),
+        ranked AS (
+            SELECT *,
+                   CASE WHEN ranking_distance IS NULL THEN 1 ELSE 0 END AS distance_null_rank
+            FROM feed
         )
         SELECT id, user_id, gym_id, gym_grade_id,
                gym_name, gym_grade_label, gym_grade_difficulty_order,
@@ -46,28 +51,40 @@
                gcs_path, gcs_streaming_path, thumbnail_path,
                duration_seconds, recorded_date, file_size_bytes, mime_type,
                view_count, like_count, comment_count, status, is_public,
+               distance_null_rank, ranking_distance, following_rank,
                created_at, updated_at, deleted_at
-        FROM feed
-        ORDER BY (ranking_distance IS NULL) ASC, ranking_distance ASC,
-                 is_following DESC, created_at DESC, id DESC
-        LIMIT #{size} OFFSET #{offset}
-    </select>
-
-    <select id="countFeedVideos" resultType="long">
-        SELECT COUNT(*)
-        FROM videos
-        WHERE is_public = TRUE AND deleted_at IS NULL AND status &lt;&gt; 'failed'
-          AND user_id &lt;&gt; #{userId}
-          AND NOT EXISTS (
-              SELECT 1
-              FROM user_blocks ub
-              WHERE ub.blocker_id = #{userId}
-                AND ub.blocked_id = videos.user_id
+        FROM ranked
+        WHERE 1 = 1
+        <if test="cursor != null">
+          AND (
+              distance_null_rank &gt; #{cursor.distanceNullRank}
+              OR (
+                  distance_null_rank = #{cursor.distanceNullRank}
+                  AND (
+                      (
+                          distance_null_rank = 0
+                          AND ranking_distance &gt; #{cursor.rankingDistance}
+                      )
+                      OR (
+                          (distance_null_rank = 1 OR ranking_distance = #{cursor.rankingDistance})
+                          AND (
+                              following_rank &lt; #{cursor.followingRank}
+                              OR (
+                                  following_rank = #{cursor.followingRank}
+                                  AND (
+                                      created_at &lt; #{cursor.createdAt}
+                                      OR (created_at = #{cursor.createdAt} AND id &lt; #{cursor.id})
+                                  )
+                              )
+                          )
+                      )
+                  )
+              )
           )
-    </select>
-
-    <select id="findFollowingIds" resultType="long">
-        SELECT following_id FROM follows WHERE follower_id = #{userId}
+        </if>
+        ORDER BY distance_null_rank ASC, ranking_distance ASC,
+                 following_rank DESC, created_at DESC, id DESC
+        LIMIT #{limit}
     </select>
 
 </mapper>

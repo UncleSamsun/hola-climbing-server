@@ -38,6 +38,9 @@ public class Video {
     private int commentCount;
     private String status;
     private boolean isPublic;
+    private Integer distanceNullRank;
+    private Double rankingDistance;
+    private Integer followingRank;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;

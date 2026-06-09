@@ -1,11 +1,10 @@
 package com.holaclimbing.server.domain.recommendation;
 
 import com.holaclimbing.server.common.response.ApiResponse;
-import com.holaclimbing.server.common.response.PageResponse;
+import com.holaclimbing.server.common.response.CursorPageResponse;
 import com.holaclimbing.server.domain.recommendation.dto.response.RecommendedVideoResponse;
 import com.holaclimbing.server.domain.recommendation.service.RecommendationService;
 import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,10 +26,10 @@ public class RecommendationController {
     private final RecommendationService recommendationService;
 
     @GetMapping("/videos")
-    public ApiResponse<PageResponse<RecommendedVideoResponse>> getVideoFeed(
+    public ApiResponse<CursorPageResponse<RecommendedVideoResponse>> getVideoFeed(
             @AuthenticationPrincipal Long userId,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") @Positive @Max(100) int size) {
-        return ApiResponse.success(recommendationService.getVideoFeed(userId, page, size));
+        return ApiResponse.success(recommendationService.getVideoFeed(userId, cursor, size));
     }
 }
