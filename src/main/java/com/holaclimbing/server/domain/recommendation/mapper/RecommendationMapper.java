@@ -9,7 +9,7 @@ import java.util.List;
 @Mapper
 public interface RecommendationMapper {
 
-    /** 추천 피드 — 공개 영상 (본인 제외), 팔로잉 업로더 우선 + 최신순. */
+    /** 추천 피드 — 공개 영상 (본인 제외), 벡터 거리 + 팔로잉 boost + 최신순 fallback. */
     List<Video> findFeedVideos(@Param("userId") Long userId,
                                @Param("size") int size,
                                @Param("offset") int offset);

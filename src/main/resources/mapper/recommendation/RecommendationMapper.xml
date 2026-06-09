@@ -2,30 +2,54 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.holaclimbing.server.domain.recommendation.mapper.RecommendationMapper">
 
-    <!-- 팔로잉 업로더의 영상을 우선 노출하고, 나머지는 최신순으로 채운다. -->
+    <!-- 임베딩이 있으면 벡터 거리에서 팔로잉 boost를 빼고, 없으면 팔로잉 + 최신순으로 채운다. -->
     <select id="findFeedVideos" resultType="com.holaclimbing.server.domain.video.domain.Video">
-        SELECT v.id, v.user_id, v.gym_id, v.gym_grade_id,
-               g.name AS gym_name,
-               gg.label AS gym_grade_label,
-               gg.difficulty_order AS gym_grade_difficulty_order,
-               v.title, v.description,
-               v.gcs_path, v.gcs_streaming_path, v.thumbnail_path,
-               v.duration_seconds, v.recorded_date, v.file_size_bytes, v.mime_type,
-               v.view_count, v.like_count, v.comment_count, v.status, v.is_public,
-               v.created_at, v.updated_at, v.deleted_at
-        FROM videos v
-        JOIN gyms g ON g.id = v.gym_id
-        JOIN gym_grades gg ON gg.id = v.gym_grade_id AND gg.gym_id = v.gym_id
-        LEFT JOIN follows f ON f.following_id = v.user_id AND f.follower_id = #{userId}
-        WHERE v.is_public = TRUE AND v.deleted_at IS NULL AND v.status &lt;&gt; 'failed'
-          AND v.user_id &lt;&gt; #{userId}
-          AND NOT EXISTS (
-              SELECT 1
-              FROM user_blocks ub
-              WHERE ub.blocker_id = #{userId}
-                AND ub.blocked_id = v.user_id
-          )
-        ORDER BY (f.id IS NOT NULL) DESC, v.created_at DESC, v.id DESC
+        WITH viewer AS (
+            SELECT style_embedding
+            FROM users
+            WHERE id = #{userId}
+        ),
+        feed AS (
+            SELECT v.id, v.user_id, v.gym_id, v.gym_grade_id,
+                   g.name AS gym_name,
+                   gg.label AS gym_grade_label,
+                   gg.difficulty_order AS gym_grade_difficulty_order,
+                   v.title, v.description,
+                   v.gcs_path, v.gcs_streaming_path, v.thumbnail_path,
+                   v.duration_seconds, v.recorded_date, v.file_size_bytes, v.mime_type,
+                   v.view_count, v.like_count, v.comment_count, v.status, v.is_public,
+                   v.created_at, v.updated_at, v.deleted_at,
+                   (f.id IS NOT NULL) AS is_following,
+                   CASE
+                       WHEN viewer.style_embedding IS NOT NULL AND g.style_embedding IS NOT NULL
+                       THEN (viewer.style_embedding &lt;=&gt; g.style_embedding)
+                            - CASE WHEN f.id IS NOT NULL THEN 0.25 ELSE 0 END
+                       ELSE NULL
+                   END AS ranking_distance
+            FROM videos v
+            JOIN gyms g ON g.id = v.gym_id
+            JOIN gym_grades gg ON gg.id = v.gym_grade_id AND gg.gym_id = v.gym_id
+            CROSS JOIN viewer
+            LEFT JOIN follows f ON f.following_id = v.user_id AND f.follower_id = #{userId}
+            WHERE v.is_public = TRUE AND v.deleted_at IS NULL AND v.status &lt;&gt; 'failed'
+              AND v.user_id &lt;&gt; #{userId}
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM user_blocks ub
+                  WHERE ub.blocker_id = #{userId}
+                    AND ub.blocked_id = v.user_id
+              )
+        )
+        SELECT id, user_id, gym_id, gym_grade_id,
+               gym_name, gym_grade_label, gym_grade_difficulty_order,
+               title, description,
+               gcs_path, gcs_streaming_path, thumbnail_path,
+               duration_seconds, recorded_date, file_size_bytes, mime_type,
+               view_count, like_count, comment_count, status, is_public,
+               created_at, updated_at, deleted_at
+        FROM feed
+        ORDER BY (ranking_distance IS NULL) ASC, ranking_distance ASC,
+                 is_following DESC, created_at DESC, id DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
 

@@ -4,7 +4,7 @@
 
 **Goal:** Replace the recommendation feed's "following first + latest" fallback with a pgvector-aware ranking when user and gym embeddings are available, while keeping the existing fallback for sparse data.
 
-**Architecture:** Keep the public endpoint `GET /api/recommendations/videos` unchanged for V1. Add vector-aware SQL in the recommendation mapper that ranks videos by similarity between `users.style_embedding` and `gyms.style_embedding`, then falls back to following/latest when either embedding is missing. Do not add a new recommendation engine service yet; the ranking stays in MyBatis because PostgreSQL owns the vector operator and index.
+**Architecture:** Keep the public endpoint `GET /api/recommendations/videos` unchanged for V1. Add vector-aware SQL in the recommendation mapper that ranks videos by `ranking_distance = cosine_distance - 0.25 following_bonus` when `users.style_embedding` and `gyms.style_embedding` are both present, then falls back to following/latest when either embedding is missing. Do not add a new recommendation engine service yet; the ranking stays in MyBatis because PostgreSQL owns the vector operator and index.
 
 **Tech Stack:** Java 25, Spring Boot 4, MyBatis XML, PostgreSQL 16 + pgvector, JUnit 5, MockMvc, Testcontainers.
 
@@ -17,10 +17,10 @@ Already completed by the Flyway task:
 - [x] Fresh DB migration creates the `vector` extension and base `style_embedding` columns.
 
 Next pgvector work should be split into these commits/tasks:
-- [ ] **Fixture alignment:** add pgvector extension/embedding columns back to focused test SQL fixtures.
-- [ ] **Red behavior test:** prove current recommendation order ignores vector similarity.
-- [ ] **Mapper ranking:** add vector-distance ordering with following/latest fallback.
-- [ ] **Docs and verification:** update README semantics and run recommendation-related tests.
+- [x] **Fixture alignment:** add pgvector extension/embedding columns back to focused test SQL fixtures.
+- [x] **Red behavior test:** prove current recommendation order ignores vector similarity.
+- [x] **Mapper ranking:** add vector-distance ordering, following boost, and following/latest fallback.
+- [x] **Docs and verification:** update README semantics and run recommendation-related tests.
 
 ---
 
@@ -56,7 +56,7 @@ Next pgvector work should be split into these commits/tasks:
 - Modify: `src/test/resources/sql/gyms-schema.sql`
 - Modify: `src/test/resources/sql/gyms-data.sql`
 
-- [ ] **Step 1: Add vector extension and embedding columns to test schemas**
+- [x] **Step 1: Add vector extension and embedding columns to test schemas**
 
 Add near the top of `users-schema.sql` and `gyms-schema.sql`:
 
@@ -76,7 +76,7 @@ Add to `gyms` in `gyms-schema.sql`:
     style_embedding vector(64),
 ```
 
-- [ ] **Step 2: Add deterministic gym embeddings**
+- [x] **Step 2: Add deterministic gym embeddings**
 
 In `gyms-data.sql`, update the two seeded gyms after insert:
 
@@ -96,7 +96,7 @@ SET style_embedding = ('[' || array_to_string(ARRAY(
 WHERE id = 2;
 ```
 
-- [ ] **Step 3: Run existing recommendation tests**
+- [x] **Step 3: Run existing recommendation tests**
 
 Run:
 
@@ -113,7 +113,7 @@ Expected: current tests still pass. The PostgreSQL test container image has alre
 **Files:**
 - Modify: `src/test/java/com/holaclimbing/server/domain/recommendation/RecommendationIntegrationTest.java`
 
-- [ ] **Step 1: Add helper to set user embedding**
+- [x] **Step 1: Add helper to set user embedding**
 
 Add helper:
 
@@ -134,7 +134,7 @@ Add field:
 private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 ```
 
-- [ ] **Step 2: Add failing behavior test**
+- [x] **Step 2: Add failing behavior test**
 
 Add test:
 
@@ -175,7 +175,7 @@ private void createVideoAtGym(String token, Long gymId, Long gymGradeId) throws 
 }
 ```
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run:
 
@@ -192,7 +192,7 @@ Expected: test fails because current SQL orders by following/latest rather than 
 **Files:**
 - Modify: `src/main/resources/mapper/recommendation/RecommendationMapper.xml`
 
-- [ ] **Step 1: Update ranking SQL**
+- [x] **Step 1: Update ranking SQL**
 
 Replace the `ORDER BY` in `findFeedVideos` with a ranked CTE:
 
@@ -215,9 +215,10 @@ feed AS (
            f.id IS NOT NULL AS is_following,
            CASE
                WHEN viewer.style_embedding IS NOT NULL AND g.style_embedding IS NOT NULL
-               THEN viewer.style_embedding <=> g.style_embedding
+               THEN (viewer.style_embedding <=> g.style_embedding)
+                    - CASE WHEN f.id IS NOT NULL THEN 0.25 ELSE 0 END
                ELSE NULL
-           END AS vector_distance
+           END AS ranking_distance
     FROM videos v
     JOIN gyms g ON g.id = v.gym_id
     JOIN gym_grades gg ON gg.id = v.gym_grade_id AND gg.gym_id = v.gym_id
@@ -241,15 +242,15 @@ SELECT id, user_id, gym_id, gym_grade_id,
        created_at, updated_at, deleted_at
 FROM feed
 ORDER BY
-    (vector_distance IS NULL) ASC,
-    vector_distance ASC,
+    (ranking_distance IS NULL) ASC,
+    ranking_distance ASC,
     is_following DESC,
     created_at DESC,
     id DESC
 LIMIT #{size} OFFSET #{offset}
 ```
 
-- [ ] **Step 2: Run vector ranking test**
+- [x] **Step 2: Run vector ranking test**
 
 Run:
 
@@ -259,7 +260,7 @@ Run:
 
 Expected: PASS.
 
-- [ ] **Step 3: Run all recommendation tests**
+- [x] **Step 3: Run all recommendation tests**
 
 Run:
 
@@ -267,7 +268,7 @@ Run:
 ./mvnw -Dtest=RecommendationIntegrationTest test
 ```
 
-Expected: existing following-first behavior may need adjustment. If following-first conflicts with vector ranking, make the test explicit: following-first applies only when viewer embedding is null.
+Expected: existing following-first behavior remains the sparse-data fallback. When embeddings exist, following is applied as a `0.25` boost to the vector distance rather than only as a tie-breaker.
 
 ---
 
@@ -276,17 +277,17 @@ Expected: existing following-first behavior may need adjustment. If following-fi
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Replace "고도화 예정" wording**
+- [x] **Step 1: Replace "고도화 예정" wording**
 
 Change the pgvector bullet to say:
 
 ```markdown
 - **pgvector 기반 추천** — 사용자의 `style_embedding`과 암장 `style_embedding`이 모두 있으면
-  코사인 거리(`<=>`)로 가까운 암장 영상을 우선 노출합니다. 임베딩이 없는 초기 데이터는
+  코사인 거리(`<=>`)에서 팔로잉 영상은 `0.25` 거리 보너스를 받아 복합 정렬됩니다. 임베딩이 없는 초기 데이터는
   팔로잉 우선 + 최신순 휴리스틱으로 fallback합니다.
 ```
 
-- [ ] **Step 2: Run documentation grep**
+- [x] **Step 2: Run documentation grep**
 
 Run:
 
@@ -303,7 +304,7 @@ Expected: README clearly says vector ranking is active with fallback, not future
 **Files:**
 - All modified files above.
 
-- [ ] **Step 1: Run targeted tests**
+- [x] **Step 1: Run targeted tests**
 
 Run:
 
@@ -313,7 +314,7 @@ Run:
 
 Expected: PASS.
 
-- [ ] **Step 2: Run related integration tests**
+- [x] **Step 2: Run related integration tests**
 
 Run:
 
@@ -323,7 +324,7 @@ Run:
 
 Expected: PASS.
 
-- [ ] **Step 3: Run whitespace check**
+- [x] **Step 3: Run whitespace check**
 
 Run:
 
@@ -335,6 +336,6 @@ Expected: exit 0.
 
 ## Trade-Offs
 
-- **Pros:** Uses existing schema and pgvector indexes, keeps API stable, gives honest fallback for sparse embeddings.
-- **Cons:** Recommendation still lives in SQL, not a separate ranking service. Cursor pagination remains deferred because vector distance + fallback sort is not a simple single-key keyset.
+- **Pros:** Uses existing schema and pgvector indexes, keeps API stable, gives honest fallback for sparse embeddings, and makes the social graph visible through a `0.25` following boost.
+- **Cons:** Recommendation still lives in SQL, not a separate ranking service. Cursor pagination remains deferred because ranking distance + fallback sort is not a simple single-key keyset.
 - **Rollback Cost:** Low. Revert only the recommendation mapper/test/README changes; schema is already present.

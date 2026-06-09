@@ -1,8 +1,9 @@
 -- User 도메인 통합 테스트용 스키마.
--- 운영 schema.sql의 users/follows/user_blocks에서 pgvector 의존 컬럼(style_embedding)과
--- 별도 인덱스를 제외한 버전 — plain postgres 컨테이너에서 동작하도록 함.
+-- 운영 schema.sql의 users/follows/user_blocks에서 별도 인덱스만 제외한 버전.
 -- terms_versions/user_term_agreements도 포함 — 회원가입이 약관 검증을 수행하므로
 -- signup을 호출하는 모든 통합 테스트에서 약관 테이블이 존재해야 한다.
+CREATE EXTENSION IF NOT EXISTS vector;
+
 DROP TABLE IF EXISTS device_tokens CASCADE;
 DROP TABLE IF EXISTS user_term_agreements CASCADE;
 DROP TABLE IF EXISTS terms_versions CASCADE;
@@ -22,6 +23,7 @@ CREATE TABLE users (
     nickname                    VARCHAR(50) NOT NULL UNIQUE,
     profile_image               VARCHAR(500),
     bio                         TEXT,
+    style_embedding             vector(64),
     role                        VARCHAR(20) NOT NULL DEFAULT 'USER',
     status                      VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     last_login_at               TIMESTAMP,

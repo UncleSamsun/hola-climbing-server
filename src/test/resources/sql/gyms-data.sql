@@ -10,6 +10,21 @@ INSERT INTO gyms (id, name, address, lat, lng, region_code, rating_avg, rating_c
 -- 명시적 id로 INSERT했으므로 BIGSERIAL 시퀀스를 최댓값 뒤로 당겨 이후 INSERT 충돌을 막는다.
 SELECT setval('gyms_id_seq', (SELECT MAX(id) FROM gyms));
 
+-- 추천 피드 벡터 정렬 검증용 deterministic embedding.
+UPDATE gyms
+SET style_embedding = ('[' || array_to_string(ARRAY(
+    SELECT CASE WHEN n = 1 THEN '1' ELSE '0' END
+    FROM generate_series(1, 64) AS gs(n)
+), ',') || ']')::vector
+WHERE id = 1;
+
+UPDATE gyms
+SET style_embedding = ('[' || array_to_string(ARRAY(
+    SELECT CASE WHEN n = 2 THEN '1' ELSE '0' END
+    FROM generate_series(1, 64) AS gs(n)
+), ',') || ']')::vector
+WHERE id = 2;
+
 INSERT INTO gym_grades (id, gym_id, label, difficulty_order, is_active) VALUES
 (1001, 1, '초록', 10, TRUE),
 (1002, 1, '파랑', 20, TRUE),
