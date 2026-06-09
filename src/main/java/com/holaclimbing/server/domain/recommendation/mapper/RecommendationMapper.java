@@ -1,5 +1,6 @@
 package com.holaclimbing.server.domain.recommendation.mapper;
 
+import com.holaclimbing.server.domain.recommendation.domain.RecommendedGym;
 import com.holaclimbing.server.domain.recommendation.dto.RecommendationCursor;
 import com.holaclimbing.server.domain.video.domain.Video;
 import org.apache.ibatis.annotations.Mapper;
@@ -14,4 +15,11 @@ public interface RecommendationMapper {
     List<Video> findFeedVideos(@Param("userId") Long userId,
                                @Param("cursor") RecommendationCursor cursor,
                                @Param("limit") int limit);
+
+    /** 주변 암장 추천 — 반경 필터 + 스타일 유사도 우선 + 거리 fallback. */
+    List<RecommendedGym> findNearbyGyms(@Param("userId") Long userId,
+                                        @Param("lat") double lat,
+                                        @Param("lng") double lng,
+                                        @Param("radiusKm") double radiusKm,
+                                        @Param("limit") int limit);
 }

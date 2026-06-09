@@ -233,6 +233,114 @@ class RecommendationIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    @DisplayName("암장 추천 — 내 주변 암장을 스타일 유사도 순으로 반환한다")
+    void getNearbyGyms_whenEmbeddingsExist_ordersByStyleSimilarity() throws Exception {
+        String viewer = register("viewer-gym-rec@hola.com", "viewer");
+        setUserEmbedding("viewer-gym-rec@hola.com", 2);
+
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "37.5000")
+                        .param("lng", "127.0200")
+                        .param("radius", "12")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].id").value(2))
+                .andExpect(jsonPath("$.data[0].name").value("ClimbingPark Hongdae"))
+                .andExpect(jsonPath("$.data[0].rankingDistance").isNumber())
+                .andExpect(jsonPath("$.data[0].distanceKm").isNumber())
+                .andExpect(jsonPath("$.data[0].source").value("style_match"))
+                .andExpect(jsonPath("$.data[1].id").value(1))
+                .andExpect(jsonPath("$.data[1].source").value("style_match"));
+    }
+
+    @Test
+    @DisplayName("암장 추천 — 사용자 임베딩이 없으면 거리순 fallback")
+    void getNearbyGyms_withoutUserEmbedding_ordersByDistance() throws Exception {
+        String viewer = register("viewer-gym-nearby@hola.com", "viewer");
+
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "37.5000")
+                        .param("lng", "127.0200")
+                        .param("radius", "12")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].rankingDistance").doesNotExist())
+                .andExpect(jsonPath("$.data[0].source").value("nearby"))
+                .andExpect(jsonPath("$.data[1].id").value(2))
+                .andExpect(jsonPath("$.data[1].source").value("nearby"));
+    }
+
+    @Test
+    @DisplayName("암장 추천 — 반경 밖 암장은 제외된다")
+    void getNearbyGyms_excludesGymsOutsideRadius() throws Exception {
+        String viewer = register("viewer-gym-radius@hola.com", "viewer");
+
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "37.5000")
+                        .param("lng", "127.0200")
+                        .param("radius", "0.1")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("암장 추천 실패 — 좌표 범위를 벗어나면 400")
+    void getNearbyGyms_invalidCoordinates_returns400() throws Exception {
+        String viewer = register("viewer-gym-invalid@hola.com", "viewer");
+
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "91")
+                        .param("lng", "127.0200")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "37.5000")
+                        .param("lng", "181")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "NaN")
+                        .param("lng", "127.0200")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "37.5000")
+                        .param("lng", "Infinity")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "37.5000")
+                        .param("lng", "127.0200")
+                        .param("radius", "NaN")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "37.5000")
+                        .param("lng", "127.0200")
+                        .param("radius", "Infinity")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("암장 추천 실패 — 토큰 없이 호출하면 401")
+    void getNearbyGyms_withoutToken_returns401() throws Exception {
+        mockMvc.perform(get("/api/recommendations/gyms")
+                        .param("lat", "37.5000")
+                        .param("lng", "127.0200"))
+                .andExpect(status().isUnauthorized());
+    }
+
     // ===== helpers =====
 
     private void createVideo(String token) throws Exception {

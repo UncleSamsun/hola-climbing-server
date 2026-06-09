@@ -87,4 +87,44 @@
         LIMIT #{limit}
     </select>
 
+    <select id="findNearbyGyms" resultType="com.holaclimbing.server.domain.recommendation.domain.RecommendedGym">
+        WITH viewer AS (
+            SELECT style_embedding
+            FROM users
+            WHERE id = #{userId}
+        ),
+        candidate AS (
+            SELECT g.id, g.name, g.address, g.thumbnail_url, g.region_code,
+                   g.rating_avg, g.rating_count,
+                   6371 * acos(GREATEST(-1.0, LEAST(1.0,
+                       cos(radians(#{lat})) * cos(radians(g.lat))
+                       * cos(radians(g.lng) - radians(#{lng}))
+                       + sin(radians(#{lat})) * sin(radians(g.lat))
+                   ))) AS distance_km,
+                   CASE
+                       WHEN viewer.style_embedding IS NOT NULL AND g.style_embedding IS NOT NULL
+                       THEN viewer.style_embedding &lt;=&gt; g.style_embedding
+                       ELSE NULL
+                   END AS ranking_distance
+            FROM gyms g
+            CROSS JOIN viewer
+            WHERE g.lat IS NOT NULL
+              AND g.lng IS NOT NULL
+              AND g.status = 'active'
+              AND g.deleted_at IS NULL
+        )
+        SELECT id, name, address, thumbnail_url, region_code,
+               rating_avg, rating_count, distance_km, ranking_distance
+        FROM candidate
+        WHERE distance_km &lt;= #{radiusKm}
+        ORDER BY
+            CASE WHEN ranking_distance IS NULL THEN 1 ELSE 0 END ASC,
+            ranking_distance ASC,
+            distance_km ASC,
+            rating_avg DESC,
+            rating_count DESC,
+            id ASC
+        LIMIT #{limit}
+    </select>
+
 </mapper>
