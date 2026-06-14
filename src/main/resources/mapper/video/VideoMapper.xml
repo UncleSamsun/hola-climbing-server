@@ -60,7 +60,7 @@
         FROM videos
         JOIN gyms g ON g.id = videos.gym_id
         JOIN gym_grades gg ON gg.id = videos.gym_grade_id AND gg.gym_id = videos.gym_id
-        WHERE videos.deleted_at IS NULL AND videos.status &lt;&gt; 'failed'
+        WHERE videos.deleted_at IS NULL
         <include refid="viewableByViewer"/>
         <if test="userId != null">
             AND videos.user_id = #{userId}
@@ -81,7 +81,7 @@
         FROM videos
         JOIN gyms g ON g.id = videos.gym_id
         JOIN gym_grades gg ON gg.id = videos.gym_grade_id AND gg.gym_id = videos.gym_id
-        WHERE videos.deleted_at IS NULL AND videos.status &lt;&gt; 'failed'
+        WHERE videos.deleted_at IS NULL
         <include refid="viewableByViewer"/>
           AND videos.gym_id = #{gymId}
         <include refid="notBlockedByViewer"/>
@@ -92,7 +92,7 @@
     <select id="countByGym" resultType="long">
         SELECT COUNT(*)
         FROM videos
-        WHERE deleted_at IS NULL AND status &lt;&gt; 'failed'
+        WHERE deleted_at IS NULL
         <include refid="viewableByViewer"/>
           AND gym_id = #{gymId}
         <include refid="notBlockedByViewer"/>

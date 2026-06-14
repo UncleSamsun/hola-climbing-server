@@ -12,6 +12,7 @@ import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UpdateCommentRequest;
 import com.holaclimbing.server.domain.video.dto.request.UpdateVideoRequest;
 import com.holaclimbing.server.domain.video.dto.request.UploadUrlRequest;
+import com.holaclimbing.server.domain.video.mapper.VideoMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +65,9 @@ class VideoIntegrationTest {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private VideoMapper videoMapper;
 
     @Test
     @DisplayName("영상 등록 실패 — 자기 소유 prefix가 아닌 objectPath면 403 FORBIDDEN")
@@ -379,6 +383,31 @@ class VideoIntegrationTest {
                 .andExpect(jsonPath("$.data.content[0].grade").doesNotExist())
                 .andExpect(jsonPath("$.data.hasNext").value(false))
                 .andExpect(jsonPath("$.data.nextCursor").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("피드·암장 영상 목록 — failed 영상도 노출하고 status를 내려준다")
+    void videoLists_includeFailedVideos() throws Exception {
+        String token = register("failed-video@hola.com", "failedclip");
+        long videoId = createVideo(token, true);
+        videoMapper.updateStatus(videoId, "failed");
+
+        var feed = dataOf(mockMvc.perform(get("/api/videos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1)));
+        org.assertj.core.api.Assertions.assertThat(feed.path("content").get(0).path("id").asLong())
+                .isEqualTo(videoId);
+        org.assertj.core.api.Assertions.assertThat(feed.path("content").get(0).path("status").asText())
+                .isEqualTo("failed");
+
+        var gymVideos = dataOf(mockMvc.perform(get("/api/gyms/1/videos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content.length()").value(1)));
+        org.assertj.core.api.Assertions.assertThat(gymVideos.path("content").get(0).path("id").asLong())
+                .isEqualTo(videoId);
+        org.assertj.core.api.Assertions.assertThat(gymVideos.path("content").get(0).path("status").asText())
+                .isEqualTo("failed");
     }
 
     @Test

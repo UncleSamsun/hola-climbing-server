@@ -33,7 +33,6 @@
         FROM videos
         WHERE user_id = #{userId}
           AND deleted_at IS NULL
-          AND status &lt;&gt; 'failed'
           AND recorded_date BETWEEN #{from} AND #{to}
         GROUP BY recorded_date
         ORDER BY recorded_date
