@@ -63,15 +63,16 @@ class StatsIntegrationTest {
     void getMyStats_withData() throws Exception {
         String token = register("a@hola.com", "climberone");
         long userId = userMapper.findByEmail("a@hola.com").getId();
-        seedStats(userId, 5, 1200L, "{\"highstep\":12,\"flagging\":8}");
+        seedVideoResult(seedVideo(userId, 500), true, "[\"high_step\", \"flagging\"]");
+        seedVideoResult(seedVideo(userId, 700), false, "[\"high_step\"]");
 
         mockMvc.perform(get("/api/stats/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.userId").value(userId))
-                .andExpect(jsonPath("$.data.totalVideos").value(5))
+                .andExpect(jsonPath("$.data.totalVideos").value(2))
                 .andExpect(jsonPath("$.data.totalClimbingSeconds").value(1200))
-                .andExpect(jsonPath("$.data.techniqueCounts.highstep").value(12))
-                .andExpect(jsonPath("$.data.techniqueCounts.flagging").value(8));
+                .andExpect(jsonPath("$.data.techniqueCounts.high_step").value(2))
+                .andExpect(jsonPath("$.data.techniqueCounts.flagging").value(1));
     }
 
     @Test
@@ -87,6 +88,26 @@ class StatsIntegrationTest {
                 .andExpect(jsonPath("$.data.dynamicCount").value(0))
                 .andExpect(jsonPath("$.data.staticCount").value(0))
                 .andExpect(jsonPath("$.data.isDynamic").value(false));
+    }
+
+    @Test
+    @DisplayName("내 통계 — user_stats 캐시가 없어도 실제 업로드 영상 수와 재생시간을 집계한다")
+    void getMyStats_countsUploadedVideosWithoutCachedStats() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        long userId = userMapper.findByEmail("a@hola.com").getId();
+        seedVideo(userId, 90);
+        seedVideo(userId, 150);
+        long deletedVideo = seedVideo(userId, 60);
+        jdbcTemplate.update("UPDATE videos SET deleted_at = NOW() WHERE id = ?", deletedVideo);
+
+        register("other@hola.com", "other");
+        long otherId = userMapper.findByEmail("other@hola.com").getId();
+        seedVideo(otherId, 999);
+
+        mockMvc.perform(get("/api/stats/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalVideos").value(2))
+                .andExpect(jsonPath("$.data.totalClimbingSeconds").value(240));
     }
 
     @Test
@@ -113,6 +134,26 @@ class StatsIntegrationTest {
                 .andExpect(jsonPath("$.data.staticCount").value(1))
                 // 동률은 dynamic > static 이 아니므로 false
                 .andExpect(jsonPath("$.data.isDynamic").value(false));
+    }
+
+    @Test
+    @DisplayName("기술별 통계 — user_stats 캐시가 없어도 영상 대표 분석 결과의 final_techniques를 집계한다")
+    void getTechniqueStats_countsFinalTechniquesWithoutCachedStats() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        long userId = userMapper.findByEmail("a@hola.com").getId();
+        seedVideoResult(seedVideo(userId), true, "[\"high_step\", \"dyno\"]");
+        seedVideoResult(seedVideo(userId), false, "[\"dyno\"]");
+
+        register("other@hola.com", "other");
+        long otherId = userMapper.findByEmail("other@hola.com").getId();
+        seedVideoResult(seedVideo(otherId), true, "[\"high_step\"]");
+
+        mockMvc.perform(get("/api/stats/me/techniques").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.techniqueCounts.high_step").value(1))
+                .andExpect(jsonPath("$.data.techniqueCounts.dyno").value(2))
+                .andExpect(jsonPath("$.data.mostUsed").value("dyno"))
+                .andExpect(jsonPath("$.data.leastUsed").value("high_step"));
     }
 
     @Test
@@ -159,12 +200,15 @@ class StatsIntegrationTest {
     void getUserStats_byId_success() throws Exception {
         register("a@hola.com", "climberone");
         long userId = userMapper.findByEmail("a@hola.com").getId();
-        seedStats(userId, 3, 600L, "{\"dyno\":4}");
+        seedVideoResult(seedVideo(userId, 200), true, "[\"dyno\"]");
+        seedVideo(userId, 200);
+        seedVideo(userId, 200);
 
         mockMvc.perform(get("/api/stats/users/" + userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalVideos").value(3))
-                .andExpect(jsonPath("$.data.techniqueCounts.dyno").value(4));
+                .andExpect(jsonPath("$.data.totalClimbingSeconds").value(600))
+                .andExpect(jsonPath("$.data.techniqueCounts.dyno").value(1));
     }
 
     @Test
@@ -180,12 +224,16 @@ class StatsIntegrationTest {
     void getTechniqueStats_withData() throws Exception {
         String token = register("a@hola.com", "climberone");
         long userId = userMapper.findByEmail("a@hola.com").getId();
-        seedStats(userId, 5, 1200L, "{\"highstep\":12,\"flagging\":8,\"dyno\":3}");
+        seedVideoResult(seedVideo(userId), true, "[\"high_step\", \"flagging\", \"dyno\"]");
+        seedVideoResult(seedVideo(userId), true, "[\"high_step\", \"flagging\"]");
+        seedVideoResult(seedVideo(userId), true, "[\"high_step\"]");
 
         mockMvc.perform(get("/api/stats/me/techniques").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.techniqueCounts.highstep").value(12))
-                .andExpect(jsonPath("$.data.mostUsed").value("highstep"))
+                .andExpect(jsonPath("$.data.techniqueCounts.high_step").value(3))
+                .andExpect(jsonPath("$.data.techniqueCounts.flagging").value(2))
+                .andExpect(jsonPath("$.data.techniqueCounts.dyno").value(1))
+                .andExpect(jsonPath("$.data.mostUsed").value("high_step"))
                 .andExpect(jsonPath("$.data.leastUsed").value("dyno"));
     }
 
@@ -198,30 +246,31 @@ class StatsIntegrationTest {
 
     // ===== helpers =====
 
-    private void seedStats(long userId, int totalVideos, long totalSeconds, String techniqueCountsJson) {
-        jdbcTemplate.update(
-                "INSERT INTO user_stats (user_id, total_videos, total_climbing_seconds, technique_counts) "
-                        + "VALUES (?, ?, ?, ?::jsonb)",
-                userId, totalVideos, totalSeconds, techniqueCountsJson);
+    private long seedVideo(long userId) {
+        return seedVideo(userId, null);
     }
 
-    private long seedVideo(long userId) {
+    private long seedVideo(long userId, Integer durationSeconds) {
         return jdbcTemplate.queryForObject(
-                "INSERT INTO videos (user_id, gym_id, gym_grade_id, title, gcs_path, recorded_date, status, is_public) "
-                        + "VALUES (?, 1, 1003, 'seed', 'seed/path.mp4', DATE '2026-06-03', 'done', TRUE) RETURNING id",
-                Long.class, userId);
+                "INSERT INTO videos (user_id, gym_id, gym_grade_id, title, gcs_path, duration_seconds, recorded_date, status, is_public) "
+                        + "VALUES (?, 1, 1003, 'seed', 'seed/path.mp4', ?, DATE '2026-06-03', 'done', TRUE) RETURNING id",
+                Long.class, userId, durationSeconds);
     }
 
     private void seedVideoResult(long videoId, Boolean isDynamic) {
+        seedVideoResult(videoId, isDynamic, "[\"high_step\"]");
+    }
+
+    private void seedVideoResult(long videoId, Boolean isDynamic, String finalTechniquesJson) {
         jdbcTemplate.update(
                 """
                         INSERT INTO analysis_video_results (
                             video_id, model_version, ai_techniques, ai_is_dynamic,
                             ai_dynamic_probability, final_techniques, final_is_dynamic, feedback_applied
                         )
-                        VALUES (?, 'rule_v3', '["high_step"]'::jsonb, ?, 0.5, '["high_step"]'::jsonb, ?, FALSE)
+                        VALUES (?, 'rule_v3', ?::jsonb, ?, 0.5, ?::jsonb, ?, FALSE)
                         """,
-                videoId, isDynamic, isDynamic);
+                videoId, finalTechniquesJson, isDynamic, finalTechniquesJson, isDynamic);
     }
 
     /** 회원가입 → 이메일 인증 → 로그인까지 완료하고 accessToken을 반환. */

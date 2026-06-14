@@ -2,12 +2,44 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.holaclimbing.server.domain.stats.mapper.StatsMapper">
 
-    <!-- technique_counts(jsonb)는 String으로 읽어 서비스에서 파싱한다. -->
+    <!-- 사용자 영상과 영상 대표 분석 결과에서 조회 시점 기준 통계를 계산한다. -->
     <select id="findByUserId" resultType="com.holaclimbing.server.domain.stats.domain.Stats">
-        SELECT user_id, total_videos, total_climbing_seconds,
-               technique_counts, last_climbed_at, updated_at
-        FROM user_stats
-        WHERE user_id = #{userId}
+        WITH active_videos AS (
+            SELECT id, duration_seconds, created_at
+            FROM videos
+            WHERE user_id = #{userId} AND deleted_at IS NULL
+        ),
+        video_totals AS (
+            SELECT
+                COUNT(*)::INTEGER AS total_videos,
+                COALESCE(SUM(duration_seconds), 0)::BIGINT AS total_climbing_seconds,
+                MAX(created_at) AS last_climbed_at
+            FROM active_videos
+        ),
+        technique_counts AS (
+            SELECT COALESCE(
+                jsonb_object_agg(technique, technique_count ORDER BY technique),
+                '{}'::jsonb
+            ) AS technique_counts
+            FROM (
+                SELECT t.technique, COUNT(*)::INTEGER AS technique_count
+                FROM active_videos v
+                JOIN analysis_video_results r ON r.video_id = v.id
+                CROSS JOIN LATERAL jsonb_array_elements_text(
+                    COALESCE(r.final_techniques, '[]'::jsonb)
+                ) AS t(technique)
+                GROUP BY t.technique
+            ) counted
+        )
+        SELECT
+            #{userId}::BIGINT AS user_id,
+            vt.total_videos,
+            vt.total_climbing_seconds,
+            tc.technique_counts::TEXT AS technique_counts,
+            vt.last_climbed_at,
+            LOCALTIMESTAMP AS updated_at
+        FROM video_totals vt
+        CROSS JOIN technique_counts tc
     </select>
 
     <!--
