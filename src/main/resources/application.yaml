@@ -84,6 +84,10 @@ management:
   metrics:
     tags:
       application: hola-climbing-server   # 모든 메트릭에 application 라벨 부착 (Grafana 필터용)
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 #      show-details: always   # when-authorized → always 변경
 #      show-components: always
 # 앱 자체 커스텀 설정
