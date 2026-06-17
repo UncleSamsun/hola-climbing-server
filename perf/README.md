@@ -195,6 +195,8 @@ Pillow available.
 
 Presentation screenshots must pass these checks before use:
 
+- result explanations are written in Korean
+- API paths, metric keys, file names, and SQL node names can stay in English
 - text stays inside its card or panel
 - no text overlaps another label, number, or border
 - long findings are wrapped or shortened instead of shrinking into unreadable text

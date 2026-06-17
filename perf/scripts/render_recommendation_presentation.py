@@ -181,31 +181,31 @@ def render(root, run_label):
     d.rounded_rectangle((44, 36, width - 44, height - 36), radius=28, fill=PALETTE["white"], outline=PALETTE["line"], width=2)
     d.rectangle((44, 36, width - 44, 156), fill="#EFF6FF")
     d.line((44, 156, width - 44, 156), fill=PALETTE["line"], width=2)
-    r.text_box((82, 64, 1220, 112), "Recommendation Feed Performance", 44, PALETTE["blue"], max_lines=1)
-    r.text_box((82, 118, 1220, 148), "Local baseline evidence summary - GET /api/recommendations/videos?size=20", 24, PALETTE["muted"], max_lines=1)
+    r.text_box((82, 64, 1220, 112), "추천 피드 성능 테스트", 44, PALETTE["blue"], max_lines=1)
+    r.text_box((82, 118, 1220, 148), "local-baseline 결과 요약 - GET /api/recommendations/videos?size=20", 24, PALETTE["muted"], max_lines=1)
     d.rounded_rectangle((1285, 70, 1680, 124), radius=14, fill=PALETTE["green_bg"], outline=PALETTE["green_line"], width=1)
-    r.text_box((1315, 84, 1650, 112), "seed: 100k videos - 10k users", 22, PALETTE["green"], max_lines=1)
+    r.text_box((1315, 84, 1650, 112), "seed: videos 100k - users 10k", 22, PALETTE["green"], max_lines=1)
 
     card_y = 210
     card_w = 390
     card_h = 190
     gap = 28
     cards = [
-        ("p95 latency", f"{values['p95']:.0f} ms", "threshold < 1000ms", PALETTE["blue"]),
-        ("p99 latency", f"{values['p99']:.0f} ms", "tail latency", PALETTE["purple"]),
-        ("error rate", f"{values['error_rate']:.0%}", "k6 checks passed", PALETTE["green"]),
-        ("SQL time", f"{values['sql_time']:.0f} ms", "EXPLAIN ANALYZE", PALETTE["amber"]),
+        ("p95 응답시간", f"{values['p95']:.0f} ms", "목표 기준 < 1000ms", PALETTE["blue"]),
+        ("p99 응답시간", f"{values['p99']:.0f} ms", "상위 지연 구간", PALETTE["purple"]),
+        ("오류율", f"{values['error_rate']:.0%}", "k6 check 통과", PALETTE["green"]),
+        ("SQL 실행시간", f"{values['sql_time']:.0f} ms", "EXPLAIN ANALYZE", PALETTE["amber"]),
     ]
     for index, card in enumerate(cards):
         x = 82 + index * (card_w + gap)
         draw_card(r, (x, card_y, x + card_w, card_y + card_h), *card)
 
     d.rounded_rectangle((82, 445, 780, 705), radius=22, fill=PALETTE["panel_bg"], outline=PALETTE["line"], width=2)
-    r.text_box((118, 480, 720, 522), "Test Flow", 32, PALETTE["ink"], max_lines=1)
+    r.text_box((118, 480, 720, 522), "테스트 흐름", 32, PALETTE["ink"], max_lines=1)
     flow = [
-        ("login", "5 perf users"),
-        ("first page", f"p95 {values['first_page_p95']:.0f}ms"),
-        ("cursor page", f"p95 {values['cursor_page_p95']:.0f}ms"),
+        ("login", "perf 사용자 5명"),
+        ("첫 페이지", f"p95 {values['first_page_p95']:.0f}ms"),
+        ("다음 페이지", f"p95 {values['cursor_page_p95']:.0f}ms"),
     ]
     x = 118
     for index, (name, detail) in enumerate(flow):
@@ -218,17 +218,17 @@ def render(root, run_label):
         x += 240
 
     d.rounded_rectangle((830, 445, 1718, 780), radius=22, fill=PALETTE["amber_bg"], outline=PALETTE["amber_line"], width=2)
-    r.text_box((866, 480, 1660, 522), "Current Bottleneck Signals", 32, PALETTE["ink"], max_lines=1)
-    draw_bullet(r, 866, 548, "Parallel Seq Scan on videos", "100k videos scanned before ranking")
+    r.text_box((866, 480, 1660, 522), "현재 병목 신호", 32, PALETTE["ink"], max_lines=1)
+    draw_bullet(r, 866, 548, "Parallel Seq Scan on videos", "랭킹 계산 전 videos 10만 건 후보 스캔")
     draw_bullet(r, 866, 628, "External merge sort on disk", f"temp blocks read {values['temp_read']}, written {values['temp_written']}")
-    draw_bullet(r, 866, 708, "User block lookup is still sequential", "small now, but grows with social graph")
+    draw_bullet(r, 866, 708, "user_blocks 조회가 순차 스캔", "현재는 작지만 소셜 그래프가 커지면 위험")
 
     d.rounded_rectangle((82, 825, 1718, 1075), radius=22, fill=PALETTE["white"], outline=PALETTE["line"], width=2)
-    r.text_box((118, 863, 1660, 905), "Portfolio Read", 32, PALETTE["ink"], max_lines=1)
+    r.text_box((118, 863, 1660, 905), "포트폴리오 해석", 32, PALETTE["ink"], max_lines=1)
     summary = [
-        f"Baseline API latency is acceptable locally (p95 {values['p95']:.0f}ms), but SQL already spends about {values['sql_time']:.0f}ms per feed query.",
-        "The plan sorts a large candidate set, spills to disk, and scans videos before returning only 20 rows.",
-        "Next experiment: reduce candidate set or pre-rank/cache feed candidates, then compare p95/p99 and SQL time with the same seed and k6 script.",
+        f"local-baseline API 지연은 p95 {values['p95']:.0f}ms로 기준 안에 있지만, feed query 한 번에 SQL이 약 {values['sql_time']:.0f}ms를 사용한다.",
+        "현재 실행 계획은 큰 후보군을 정렬하고 disk spill을 만들며, 최종 20개만 반환하기 전 videos를 넓게 스캔한다.",
+        "다음 실험은 후보군 축소 또는 feed 후보 사전 랭킹/cache 적용 후, 동일 seed와 k6 script로 p95/p99와 SQL 시간을 비교한다.",
     ]
     y = 925
     for line in summary:
@@ -236,7 +236,7 @@ def render(root, run_label):
         r.text_box((152, y, 1660, y + 48), line, 24, PALETTE["ink"], min_size=20, max_lines=2)
         y += 54
 
-    r.text_box((82, 1120, 225, 1150), "Raw evidence:", 20, PALETTE["muted"], max_lines=1)
+    r.text_box((82, 1120, 225, 1150), "원본 근거:", 20, PALETTE["muted"], max_lines=1)
     r.text_box(
         (225, 1120, 1660, 1150),
         "k6-summary.json - recommendation-feed-explain.json - screenshots/raw",
