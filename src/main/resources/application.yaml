@@ -84,6 +84,11 @@ management:
   metrics:
     tags:
       application: hola-climbing-server   # 모든 메트릭에 application 라벨 부착 (Grafana 필터용)
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms, 300ms, 500ms, 1s, 2s, 5s
   prometheus:
     metrics:
       export:
