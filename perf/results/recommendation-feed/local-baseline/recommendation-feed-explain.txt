@@ -1,0 +1,67 @@
+                                                                                                                                                                                                                                                                                                                                      QUERY PLAN                                                                                                                                                                                                                                                                                                                                       
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=24052.59..24057.93 rows=20 width=260) (actual time=185.124..188.688 rows=20 loops=1)
+   Buffers: shared hit=4685, temp read=1464 written=9137
+   ->  Nested Loop Anti Join  (cost=24052.59..50722.59 rows=99990 width=260) (actual time=185.123..188.685 rows=20 loops=1)
+         Join Filter: (((ub.blocker_id = 1) AND (ub.blocked_id = v.user_id)) OR ((ub.blocker_id = v.user_id) AND (ub.blocked_id = 1)))
+         Buffers: shared hit=4685, temp read=1464 written=9137
+         ->  Gather Merge  (cost=24052.59..35698.07 rows=99990 width=780) (actual time=185.055..188.610 rows=20 loops=1)
+               Workers Planned: 2
+               Workers Launched: 2
+               Buffers: shared hit=4674, temp read=1464 written=9137
+               ->  Sort  (cost=23052.57..23156.72 rows=41662 width=780) (actual time=172.709..172.781 rows=55 loops=3)
+                     Sort Key: (CASE WHEN (CASE WHEN ((users.style_embedding IS NOT NULL) AND (g.style_embedding IS NOT NULL)) THEN ((users.style_embedding <=> g.style_embedding) - (CASE WHEN (f.id IS NOT NULL) THEN 0.25 ELSE '0'::numeric END)::double precision) ELSE NULL::double precision END IS NULL) THEN 1 ELSE 0 END), (CASE WHEN ((users.style_embedding IS NOT NULL) AND (g.style_embedding IS NOT NULL)) THEN ((users.style_embedding <=> g.style_embedding) - (CASE WHEN (f.id IS NOT NULL) THEN 0.25 ELSE '0'::numeric END)::double precision) ELSE NULL::double precision END), (CASE WHEN (f.id IS NOT NULL) THEN 1 ELSE 0 END) DESC, v.created_at DESC, v.id DESC
+                     Sort Method: external merge  Disk: 26256kB
+                     Buffers: shared hit=4674, temp read=1464 written=9137
+                     Worker 0:  Sort Method: external merge  Disk: 23408kB
+                     Worker 1:  Sort Method: external merge  Disk: 23288kB
+                     ->  Hash Left Join  (cost=334.62..5470.75 rows=41662 width=780) (actual time=2.409..26.524 rows=33330 loops=3)
+                           Hash Cond: (v.user_id = f.following_id)
+                           Buffers: shared hit=4608
+                           ->  Hash Join  (cost=219.71..5246.43 rows=41662 width=772) (actual time=2.261..17.592 rows=33330 loops=3)
+                                 Hash Cond: ((v.gym_id = g.id) AND (v.gym_grade_id = gg.id))
+                                 Buffers: shared hit=4507
+                                 ->  Parallel Seq Scan on videos v  (cost=0.00..4713.83 rows=41662 width=223) (actual time=0.010..6.523 rows=33330 loops=3)
+                                       Filter: (is_public AND (deleted_at IS NULL) AND (user_id <> 1))
+                                       Rows Removed by Filter: 3
+                                       Buffers: shared hit=4193
+                                 ->  Hash  (cost=174.71..174.71 rows=3000 width=573) (actual time=2.214..2.216 rows=3000 loops=3)
+                                       Buckets: 4096  Batches: 1  Memory Usage: 1620kB
+                                       Buffers: shared hit=248
+                                       ->  Hash Join  (cost=69.78..174.71 rows=3000 width=573) (actual time=0.387..1.369 rows=3000 loops=3)
+                                             Hash Cond: (gg.gym_id = g.id)
+                                             Buffers: shared hit=248
+                                             ->  Nested Loop  (cost=0.29..97.30 rows=3000 width=287) (actual time=0.042..0.543 rows=3000 loops=3)
+                                                   Buffers: shared hit=107
+                                                   ->  Index Scan using users_pkey on users  (cost=0.29..8.30 rows=1 width=264) (actual time=0.029..0.030 rows=1 loops=3)
+                                                         Index Cond: (id = 1)
+                                                         Buffers: shared hit=20
+                                                   ->  Seq Scan on gym_grades gg  (cost=0.00..59.00 rows=3000 width=23) (actual time=0.010..0.190 rows=3000 loops=3)
+                                                         Buffers: shared hit=87
+                                             ->  Hash  (cost=57.00..57.00 rows=1000 width=286) (actual time=0.338..0.338 rows=1000 loops=3)
+                                                   Buckets: 1024  Batches: 1  Memory Usage: 257kB
+                                                   Buffers: shared hit=141
+                                                   ->  Seq Scan on gyms g  (cost=0.00..57.00 rows=1000 width=286) (actual time=0.005..0.184 rows=1000 loops=3)
+                                                         Buffers: shared hit=141
+                           ->  Hash  (cost=114.53..114.53 rows=30 width=16) (actual time=0.132..0.133 rows=30 loops=3)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                 Buffers: shared hit=101
+                                 ->  Bitmap Heap Scan on follows f  (cost=4.66..114.53 rows=30 width=16) (actual time=0.027..0.128 rows=30 loops=3)
+                                       Recheck Cond: (follower_id = 1)
+                                       Heap Blocks: exact=30
+                                       Buffers: shared hit=101
+                                       ->  Bitmap Index Scan on idx_follows_follower  (cost=0.00..4.65 rows=30 width=0) (actual time=0.020..0.020 rows=30 loops=3)
+                                             Index Cond: (follower_id = 1)
+                                             Buffers: shared hit=11
+         ->  Materialize  (cost=0.00..26.03 rows=6 width=16) (actual time=0.003..0.003 rows=0 loops=20)
+               Buffers: shared hit=11
+               ->  Seq Scan on user_blocks ub  (cost=0.00..26.00 rows=6 width=16) (actual time=0.062..0.063 rows=0 loops=1)
+                     Filter: ((blocker_id = 1) OR (blocked_id = 1))
+                     Rows Removed by Filter: 1000
+                     Buffers: shared hit=11
+ Planning:
+   Buffers: shared hit=821
+ Planning Time: 3.253 ms
+ Execution Time: 190.617 ms
+(63 rows)
+

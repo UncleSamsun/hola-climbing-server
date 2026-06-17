@@ -1,0 +1,13 @@
+git_commit=ce6c80ba86482283b79a2c51feadd6b6864e5fe6
+git_status_short_start
+?? perf/results/recommendation-feed/local-baseline/code-state.txt
+?? perf/results/recommendation-feed/local-baseline/k6-summary.json
+?? perf/results/recommendation-feed/local-baseline/k6-summary.txt
+?? perf/results/recommendation-feed/local-baseline/recommendation-feed-explain.json
+?? perf/results/recommendation-feed/local-baseline/recommendation-feed-explain.txt
+?? perf/results/recommendation-feed/local-baseline/row-counts-and-sizes.txt
+git_status_short_end
+captured_at=2026-06-17T16:58:04Z
+database_url=postgresql://hola:***@127.0.0.1:5432/hola_perf
+viewer_id=1
+page_size=20
