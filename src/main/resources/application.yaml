@@ -97,8 +97,8 @@ management:
 #      show-components: always
 # 앱 자체 커스텀 설정
 app:
-  base-url: ${APP_BASE_URL:http://localhost:8080}   # 이메일 인증 링크 생성 기준 URL
-  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}  # 영상 공유 링크 생성 기준 FE URL
+  base-url: ${APP_BASE_URL:http://localhost:8080}   # 서버 공개 URL (AI callback 등 서버 기준 URL)
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}  # 메일 인증·공유 링크 생성 기준 FE URL
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}   # FE(Vue3+Vite) 개발 서버
   admin:
