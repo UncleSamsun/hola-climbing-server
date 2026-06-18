@@ -20,13 +20,19 @@ public record GymDetailResponse(
         String regionCode,
         BigDecimal ratingAvg,
         int ratingCount,
-        String status
+        String status,
+        boolean isFavorite
 ) {
     public static GymDetailResponse of(Gym gym, Map<String, DayHours> businessHours, String thumbnailUrl) {
+        return of(gym, businessHours, thumbnailUrl, false);
+    }
+
+    public static GymDetailResponse of(Gym gym, Map<String, DayHours> businessHours, String thumbnailUrl,
+                                       boolean isFavorite) {
         return new GymDetailResponse(
                 gym.getId(), gym.getName(), gym.getAddress(), gym.getLat(), gym.getLng(),
                 gym.getDescription(), gym.getPhone(), gym.getWebsite(), thumbnailUrl,
                 businessHours, gym.getRegionCode(), gym.getRatingAvg(), gym.getRatingCount(),
-                gym.getStatus());
+                gym.getStatus(), isFavorite);
     }
 }

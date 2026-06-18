@@ -19,7 +19,7 @@ public interface GymService {
     List<GymSummaryResponse> findNearbyGyms(double lat, double lng, double radiusKm, int size);
 
     /** 암장 상세 조회. */
-    GymDetailResponse getGymDetail(Long gymId);
+    GymDetailResponse getGymDetail(Long gymId, Long viewerId);
 
     /** 암장별 활성 난이도 목록 조회. */
     List<GymGradeResponse> getGrades(Long gymId);

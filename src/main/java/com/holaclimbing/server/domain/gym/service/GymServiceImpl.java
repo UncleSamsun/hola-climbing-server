@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
 import com.holaclimbing.server.common.response.PageResponse;
+import com.holaclimbing.server.domain.favorite.mapper.FavoriteMapper;
 import com.holaclimbing.server.domain.gym.domain.Gym;
 import com.holaclimbing.server.domain.gym.dto.DayHours;
 import com.holaclimbing.server.domain.gym.dto.request.CreateGymRequest;
@@ -34,6 +35,7 @@ public class GymServiceImpl implements GymService {
 
     private final GymMapper gymMapper;
     private final GymGradeMapper gymGradeMapper;
+    private final FavoriteMapper favoriteMapper;
     private final ObjectMapper objectMapper;
     private final GymProfileImageUrlResolver profileImageUrlResolver;
 
@@ -64,13 +66,14 @@ public class GymServiceImpl implements GymService {
     }
 
     @Override
-    public GymDetailResponse getGymDetail(Long gymId) {
+    public GymDetailResponse getGymDetail(Long gymId, Long viewerId) {
         Gym gym = gymMapper.findById(gymId);
         if (gym == null) {
             throw new BusinessException(ErrorCode.GYM_NOT_FOUND);
         }
+        boolean isFavorite = viewerId != null && favoriteMapper.exists(viewerId, gymId);
         return GymDetailResponse.of(gym, parseBusinessHours(gym.getBusinessHours()),
-                profileImageUrlResolver.resolve(gym.getThumbnailUrl()));
+                profileImageUrlResolver.resolve(gym.getThumbnailUrl()), isFavorite);
     }
 
     @Override
@@ -117,7 +120,7 @@ public class GymServiceImpl implements GymService {
         gymMapper.updateBusinessHours(gymId, writeBusinessHours(request.businessHours()));
         // active 상태가 아니면 getGymDetail이 404를 낸다. 상세 응답 대신 본인이 본 직전 상태로 응답.
         return gym.getStatus() != null && "active".equals(gym.getStatus())
-                ? getGymDetail(gymId)
+                ? getGymDetail(gymId, userId)
                 : pendingDetail(gymMapper.findByIdIncludingPending(gymId));
     }
 

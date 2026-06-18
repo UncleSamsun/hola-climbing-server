@@ -1,12 +1,14 @@
 package com.holaclimbing.server.domain.gym;
 
 import com.holaclimbing.server.TestcontainersConfiguration;
+import com.holaclimbing.server.common.security.JwtTokenProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,12 +26,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
-@Sql(scripts = {"classpath:sql/gyms-schema.sql", "classpath:sql/gyms-data.sql"},
+@Sql(scripts = {"classpath:sql/users-schema.sql", "classpath:sql/gyms-schema.sql",
+        "classpath:sql/gyms-data.sql", "classpath:sql/favorites-schema.sql"},
         executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class GymIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     @Test
     @DisplayName("암장 검색 — 필터 없으면 활성 암장 4개를 이름순으로 반환한다")
@@ -153,7 +162,28 @@ class GymIntegrationTest {
                         "gyms/profile-images/1/seed.jpg")))
                 .andExpect(jsonPath("$.data.thumbnailUrl").value(org.hamcrest.Matchers.containsString(
                         "X-Goog-Signature=")))
+                .andExpect(jsonPath("$.data.isFavorite").value(false))
                 .andExpect(jsonPath("$.data.photos").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("암장 상세 — 인증 사용자가 즐겨찾기한 암장은 isFavorite true를 반환한다")
+    void getGymDetail_favoritedByAuthenticatedUser_returnsTrue() throws Exception {
+        long userId = 101L;
+        String email = "favorite-detail@hola.com";
+        jdbcTemplate.update("""
+                        INSERT INTO users (id, email, password_hash, email_verified, nickname)
+                        VALUES (?, ?, ?, TRUE, ?)
+                        """,
+                userId, email, "{noop}unused", "favoriteDetail");
+        jdbcTemplate.update("INSERT INTO favorites (user_id, gym_id) VALUES (?, ?)", userId, 1L);
+
+        String token = jwtTokenProvider.createAccessToken(userId, email, "USER");
+
+        mockMvc.perform(get("/api/gyms/1").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.isFavorite").value(true));
     }
 
     @Test

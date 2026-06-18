@@ -69,8 +69,9 @@ public class GymController {
 
     @ApiErrorCodes({GYM_NOT_FOUND})
     @GetMapping("/{gymId}")
-    public ApiResponse<GymDetailResponse> getGymDetail(@PathVariable Long gymId) {
-        return ApiResponse.success(gymService.getGymDetail(gymId));
+    public ApiResponse<GymDetailResponse> getGymDetail(@PathVariable Long gymId,
+                                                       @AuthenticationPrincipal Long viewerId) {
+        return ApiResponse.success(gymService.getGymDetail(gymId, viewerId));
     }
 
     @ApiErrorCodes({GYM_NOT_FOUND})
