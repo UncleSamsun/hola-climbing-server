@@ -1,11 +1,8 @@
-git_commit=df8e3e06815cb3d95fd82c19cb057abbc6c0ae02
+git_commit=d0f2a263841467ce7a6fb7a9fe511a6fb882253b
 git_status_short_start
-?? perf/results/recommendation-feed/after/code-state.txt
-?? perf/results/recommendation-feed/after/recommendation-feed-explain.json
-?? perf/results/recommendation-feed/after/recommendation-feed-explain.txt
-?? perf/results/recommendation-feed/after/row-counts-and-sizes.txt
+
 git_status_short_end
-captured_at=2026-06-18T02:32:53Z
+captured_at=2026-06-18T02:39:39Z
 database_url=postgresql://hola:***@127.0.0.1:5432/hola_perf
 viewer_id=1
 page_size=20
