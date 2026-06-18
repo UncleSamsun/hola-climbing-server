@@ -22,6 +22,8 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     private static final String SOURCE_FOLLOWING = "following";
     private static final String SOURCE_RECOMMENDED = "recommended";
+    private static final int DEFAULT_FEED_CANDIDATE_WINDOW = 5_000;
+    private static final int MIN_FEED_CANDIDATE_WINDOW_MULTIPLIER = 50;
     private static final double MIN_LAT = -90.0;
     private static final double MAX_LAT = 90.0;
     private static final double MIN_LNG = -180.0;
@@ -34,7 +36,9 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Override
     public CursorPageResponse<RecommendedVideoResponse> getVideoFeed(Long userId, String cursor, int size) {
         RecommendationCursor decodedCursor = RecommendationCursorCodec.decode(cursor);
-        List<Video> videos = recommendationMapper.findFeedVideos(userId, decodedCursor, size + 1);
+        int limit = size + 1;
+        int candidateWindow = Math.max(DEFAULT_FEED_CANDIDATE_WINDOW, limit * MIN_FEED_CANDIDATE_WINDOW_MULTIPLIER);
+        List<Video> videos = recommendationMapper.findFeedVideos(userId, decodedCursor, limit, candidateWindow);
         boolean hasNext = videos.size() > size;
         List<Video> pageVideos = hasNext ? videos.subList(0, size) : videos;
 

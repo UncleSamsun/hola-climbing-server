@@ -14,7 +14,8 @@ public interface RecommendationMapper {
     /** 추천 피드 — 공개 영상 (본인 제외), 벡터 거리 + 팔로잉 boost + 최신순 fallback. */
     List<Video> findFeedVideos(@Param("userId") Long userId,
                                @Param("cursor") RecommendationCursor cursor,
-                               @Param("limit") int limit);
+                               @Param("limit") int limit,
+                               @Param("candidateWindow") int candidateWindow);
 
     /** 주변 암장 추천 — 반경 필터 + 스타일 유사도 우선 + 거리 fallback. */
     List<RecommendedGym> findNearbyGyms(@Param("userId") Long userId,
