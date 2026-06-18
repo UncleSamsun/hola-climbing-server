@@ -3,7 +3,7 @@
 <mapper namespace="com.holaclimbing.server.domain.terms.mapper.TermsMapper">
 
     <select id="findActiveTerms" resultType="com.holaclimbing.server.domain.terms.domain.TermVersion">
-        SELECT DISTINCT ON (type) id, type, version, title, is_required, effective_at
+        SELECT DISTINCT ON (type) id, type, version, title, is_required, effective_at, content
         FROM terms_versions
         WHERE effective_at &lt;= NOW()
         ORDER BY type, effective_at DESC, version DESC

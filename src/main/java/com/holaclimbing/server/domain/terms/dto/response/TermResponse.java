@@ -7,10 +7,11 @@ public record TermResponse(
         String type,
         String version,
         boolean required,
-        String title
+        String title,
+        String content
 ) {
     public static TermResponse of(TermVersion term) {
         return new TermResponse(term.getId(), term.getType(), term.getVersion(),
-                Boolean.TRUE.equals(term.getIsRequired()), term.getTitle());
+                Boolean.TRUE.equals(term.getIsRequired()), term.getTitle(), term.getContent());
     }
 }

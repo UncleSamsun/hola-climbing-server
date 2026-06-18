@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 /**
  * 약관 버전. terms_versions 테이블 매핑.
- * type: service | privacy | marketing
+ * type: service | privacy | marketing | location
  */
 @Getter
 @Builder
@@ -21,6 +21,7 @@ public class TermVersion {
     private String type;
     private String version;
     private String title;
+    private String content;
     private Boolean isRequired;
     private LocalDateTime effectiveAt;
 }

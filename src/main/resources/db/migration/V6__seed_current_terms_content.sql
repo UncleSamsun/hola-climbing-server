@@ -1,7 +1,7 @@
--- Terms 도메인 통합 테스트 시드. users-schema.sql 다음에 실행.
--- service/privacy는 필수, marketing/location은 선택.
-INSERT INTO terms_versions (id, type, version, title, content, is_required, effective_at) VALUES
-(1, 'service', '1.0', '서비스 이용약관', $terms$
+-- Current terms seed. Keep this as an idempotent upsert because existing
+-- production databases already have V1 terms rows.
+INSERT INTO terms_versions (type, version, title, content, is_required, effective_at) VALUES
+('service', '1.0', '서비스 이용약관', $terms$
 제1조 목적
 이 약관은 Hola Climbing이 제공하는 클라이밍 영상 공유, 암장 정보, 채팅, 댓글, 통계, AI 동작 분석 및 관련 서비스의 이용 조건과 절차, 회원과 운영자의 권리와 의무를 정합니다.
 
@@ -19,8 +19,8 @@ AI 분석 결과와 통계는 운동 자세 개선을 돕는 참고 정보이며
 
 제6조 탈퇴와 분쟁
 회원은 언제든지 탈퇴할 수 있으며 탈퇴 후 법령상 보관이 필요한 정보와 부정 이용 방지에 필요한 최소 정보를 제외하고 관련 정보는 처리방침에 따라 삭제됩니다. 서비스 이용과 관련한 분쟁에는 대한민국 법령을 적용합니다.
-$terms$, TRUE, '2026-01-01 00:00:00'),
-(2, 'privacy', '1.0', '개인정보 처리방침', $terms$
+$terms$, TRUE, TIMESTAMP '2026-01-01 00:00:00'),
+('privacy', '1.0', '개인정보 처리방침', $terms$
 1. 수집하는 개인정보
 Hola Climbing은 회원가입과 서비스 제공을 위해 이메일, 닉네임, 비밀번호 해시, 프로필 이미지, 회원 상태, 약관 동의 내역을 처리합니다. 서비스 이용 과정에서 영상, 썸네일, 댓글, 리뷰, 채팅 메시지, 클라이밍 기록, 신고 내용, 알림 설정, 기기 토큰, 접속 로그, 요청 식별자, IP, User-Agent가 생성될 수 있습니다. 위치 기반 기능을 사용할 때는 위도, 경도, 요청 시각, 암장과의 거리 또는 위치 인증 결과가 처리될 수 있습니다.
 
@@ -38,15 +38,15 @@ Hola Climbing은 회원가입과 서비스 제공을 위해 이메일, 닉네임
 
 6. 안전성 확보 조치
 운영자는 비밀번호 단방향 암호화, 접근 권한 관리, 전송 구간 보호, 로그와 모니터링, 불필요한 개인정보 최소화 등 합리적인 보호 조치를 적용합니다.
-$terms$, TRUE, '2026-01-01 00:00:00'),
-(3, 'marketing', '1.0', '마케팅 정보 수신 동의', $terms$
+$terms$, TRUE, TIMESTAMP '2026-01-01 00:00:00'),
+('marketing', '1.0', '마케팅 정보 수신 동의', $terms$
 Hola Climbing은 이벤트, 신규 기능, 서비스 업데이트, 프로모션, 설문, 혜택 안내를 위해 이메일 또는 앱 푸시 알림을 발송할 수 있습니다.
 
 수집 및 이용 항목은 이메일, 닉네임, 기기 토큰, 알림 수신 설정, 서비스 이용 이력 중 안내 대상 선별에 필요한 최소 정보입니다. 보유 및 이용 기간은 동의 철회 또는 회원 탈퇴 시까지입니다.
 
 마케팅 정보 수신 동의는 선택 사항이며, 동의하지 않아도 회원가입과 기본 서비스 이용에는 제한이 없습니다. 회원은 앱의 알림 설정, 기기 설정 또는 운영자가 제공하는 방법을 통해 언제든지 수신 동의를 철회할 수 있습니다.
-$terms$, FALSE, '2026-01-01 00:00:00'),
-(4, 'location', '1.0', '위치기반서비스 이용약관', $terms$
+$terms$, FALSE, TIMESTAMP '2026-01-01 00:00:00'),
+('location', '1.0', '위치기반서비스 이용약관', $terms$
 제1조 목적
 이 약관은 Hola Climbing이 위치정보를 활용해 제공하는 주변 암장 조회, 암장 기반 채팅, GPS 기반 암장 인증, 위치 인증 메시지 표시 등 위치기반서비스의 이용 조건을 정합니다.
 
@@ -58,4 +58,9 @@ $terms$, FALSE, '2026-01-01 00:00:00'),
 
 제4조 금지행위와 책임
 회원은 GPS 조작, 허위 위치 전송, 타인의 위치정보 도용 등 위치기반서비스의 신뢰를 해치는 행위를 해서는 안 됩니다. 운영자는 허위 위치 인증이 의심되는 경우 해당 기능 이용을 제한하거나 관련 콘텐츠를 조치할 수 있습니다.
-$terms$, FALSE, '2026-01-01 00:00:00');
+$terms$, FALSE, TIMESTAMP '2026-01-01 00:00:00')
+ON CONFLICT (type, version) DO UPDATE
+SET title = EXCLUDED.title,
+    content = EXCLUDED.content,
+    is_required = EXCLUDED.is_required,
+    effective_at = EXCLUDED.effective_at;

@@ -53,7 +53,8 @@ class SignupTermsAgreementTest {
                   "termsAgreed": [
                     { "termId": 1, "agreed": true },
                     { "termId": 2, "agreed": true },
-                    { "termId": 3, "agreed": true }
+                    { "termId": 3, "agreed": true },
+                    { "termId": 4, "agreed": false }
                   ]
                 }
                 """;
@@ -69,7 +70,7 @@ class SignupTermsAgreementTest {
     }
 
     @Test
-    @DisplayName("회원가입 — 마케팅(선택)만 false여도 201")
+    @DisplayName("회원가입 — 선택 약관이 false여도 201")
     void signup_optionalTermDeclined_succeeds() throws Exception {
         String body = """
                 {
@@ -79,7 +80,8 @@ class SignupTermsAgreementTest {
                   "termsAgreed": [
                     { "termId": 1, "agreed": true },
                     { "termId": 2, "agreed": true },
-                    { "termId": 3, "agreed": false }
+                    { "termId": 3, "agreed": false },
+                    { "termId": 4, "agreed": false }
                   ]
                 }
                 """;

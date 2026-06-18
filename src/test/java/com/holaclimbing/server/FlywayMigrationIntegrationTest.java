@@ -41,4 +41,38 @@ class FlywayMigrationIntegrationTest {
         assertThat(userTableCount).isEqualTo(1);
         assertThat(vectorExtensionCount).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("Flyway migrations seed current terms including location and full content")
+    void flywayMigrations_seedCurrentTermsWithContent() {
+        Integer activeTermCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM terms_versions
+                WHERE version = '1.0'
+                  AND effective_at <= NOW()
+                """, Integer.class);
+        Boolean locationRequired = jdbcTemplate.queryForObject("""
+                SELECT is_required
+                FROM terms_versions
+                WHERE type = 'location'
+                  AND version = '1.0'
+                """, Boolean.class);
+        String serviceContent = jdbcTemplate.queryForObject("""
+                SELECT content
+                FROM terms_versions
+                WHERE type = 'service'
+                  AND version = '1.0'
+                """, String.class);
+        String locationContent = jdbcTemplate.queryForObject("""
+                SELECT content
+                FROM terms_versions
+                WHERE type = 'location'
+                  AND version = '1.0'
+                """, String.class);
+
+        assertThat(activeTermCount).isEqualTo(4);
+        assertThat(locationRequired).isFalse();
+        assertThat(serviceContent).contains("Hola Climbing", "서비스 이용");
+        assertThat(locationContent).contains("위치정보", "암장 인증");
+    }
 }

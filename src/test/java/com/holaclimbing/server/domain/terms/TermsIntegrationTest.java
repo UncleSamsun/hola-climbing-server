@@ -28,6 +28,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,6 +51,7 @@ class TermsIntegrationTest {
     private static final long TERM_SERVICE = 1L;
     private static final long TERM_PRIVACY = 2L;
     private static final long TERM_MARKETING = 3L;
+    private static final long TERM_LOCATION = 4L;
 
     @Autowired
     private MockMvc mockMvc;
@@ -67,16 +69,25 @@ class TermsIntegrationTest {
     private JwtTokenProvider jwtTokenProvider;
 
     @Test
-    @DisplayName("활성 약관 조회 — 발효 중인 약관 3종을 반환한다")
+    @DisplayName("활성 약관 조회 — 발효 중인 약관 4종과 본문을 반환한다")
     void getActiveTerms_returnsActiveTerms() throws Exception {
-        // findActiveTerms는 type 오름차순 정렬 → marketing, privacy, service
+        // findActiveTerms는 type 오름차순 정렬 → location, marketing, privacy, service
         mockMvc.perform(get("/api/terms"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(3))
-                .andExpect(jsonPath("$.data[0].type").value("marketing"))
+                .andExpect(jsonPath("$.data.length()").value(4))
+                .andExpect(jsonPath("$.data[0].type").value("location"))
+                .andExpect(jsonPath("$.data[0].title").value("위치기반서비스 이용약관"))
                 .andExpect(jsonPath("$.data[0].required").value(false))
-                .andExpect(jsonPath("$.data[2].type").value("service"))
-                .andExpect(jsonPath("$.data[2].required").value(true));
+                .andExpect(jsonPath("$.data[0].content").value(containsString("위치정보")))
+                .andExpect(jsonPath("$.data[1].type").value("marketing"))
+                .andExpect(jsonPath("$.data[1].required").value(false))
+                .andExpect(jsonPath("$.data[1].content").value(containsString("마케팅")))
+                .andExpect(jsonPath("$.data[2].type").value("privacy"))
+                .andExpect(jsonPath("$.data[2].required").value(true))
+                .andExpect(jsonPath("$.data[2].content").value(containsString("개인정보")))
+                .andExpect(jsonPath("$.data[3].type").value("service"))
+                .andExpect(jsonPath("$.data[3].required").value(true))
+                .andExpect(jsonPath("$.data[3].content").value(containsString("서비스 이용")));
     }
 
     @Test
@@ -84,14 +95,14 @@ class TermsIntegrationTest {
     void getActiveTerms_returnsLatestTermsWithoutCache() throws Exception {
         mockMvc.perform(get("/api/terms"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[2].title").value("서비스 이용약관"));
+                .andExpect(jsonPath("$.data[3].title").value("서비스 이용약관"));
 
         jdbcTemplate.update("UPDATE terms_versions SET title = ? WHERE id = ?",
                 "서비스 이용약관 수정", TERM_SERVICE);
 
         mockMvc.perform(get("/api/terms"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[2].title").value("서비스 이용약관 수정"));
+                .andExpect(jsonPath("$.data[3].title").value("서비스 이용약관 수정"));
     }
 
     @Test
@@ -111,7 +122,8 @@ class TermsIntegrationTest {
         var request = signupRequest("a@hola.com", PASSWORD, "climberone", List.of(
                 new TermAgreementRequest(TERM_SERVICE, true),
                 new TermAgreementRequest(TERM_PRIVACY, true),
-                new TermAgreementRequest(TERM_MARKETING, false)));
+                new TermAgreementRequest(TERM_MARKETING, false),
+                new TermAgreementRequest(TERM_LOCATION, false)));
         mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -205,7 +217,8 @@ class TermsIntegrationTest {
     private String register(String email, String nickname) throws Exception {
         var request = signupRequest(email, PASSWORD, nickname, List.of(
                 new TermAgreementRequest(TERM_SERVICE, true),
-                new TermAgreementRequest(TERM_PRIVACY, true)));
+                new TermAgreementRequest(TERM_PRIVACY, true),
+                new TermAgreementRequest(TERM_LOCATION, false)));
         mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
