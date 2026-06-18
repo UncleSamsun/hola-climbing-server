@@ -3,6 +3,7 @@ package com.holaclimbing.server.domain.user;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.TestcontainersConfiguration;
+import static com.holaclimbing.server.TestSignupRequests.signupRequest;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
 import com.holaclimbing.server.domain.user.dto.request.LogoutRequest;
 import com.holaclimbing.server.domain.user.dto.request.PasswordResetEmailRequest;
@@ -42,7 +43,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
-@Sql(scripts = "classpath:sql/users-schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = {
+        "classpath:sql/users-schema.sql",
+        "classpath:sql/terms-data.sql"
+}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class UserAuthIntegrationTest {
 
     private static final String EMAIL = "climber@hola.com";
@@ -345,7 +349,7 @@ class UserAuthIntegrationTest {
     private ResultActions signup(String email, String password, String nickname) throws Exception {
         return mockMvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new SignupRequest(email, password, nickname))));
+                .content(objectMapper.writeValueAsString(signupRequest(email, password, nickname))));
     }
 
     private ResultActions login(String email, String password) throws Exception {

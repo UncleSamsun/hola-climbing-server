@@ -27,16 +27,17 @@ public class TermsServiceImpl implements TermsService {
     @Override
     @Cacheable(cacheNames = CacheConfig.CACHE_ACTIVE_TERMS)
     public List<TermResponse> getActiveTerms() {
-        return termsMapper.findActiveTerms().stream().map(TermResponse::of).toList();
+        return findActiveTermsOrThrow().stream().map(TermResponse::of).toList();
     }
 
     @Override
     @Transactional
     public void agree(Long userId, List<TermAgreementRequest> agreements) {
+        List<TermVersion> activeTerms = findActiveTermsOrThrow();
         if (agreements == null || agreements.isEmpty()) {
             return;
         }
-        Map<Long, TermVersion> active = termsMapper.findActiveTerms().stream()
+        Map<Long, TermVersion> active = activeTerms.stream()
                 .collect(Collectors.toMap(TermVersion::getId, Function.identity()));
         for (TermAgreementRequest a : agreements) {
             if (!active.containsKey(a.termId())) {
@@ -49,15 +50,28 @@ public class TermsServiceImpl implements TermsService {
 
     @Override
     public void validateRequiredAgreed(List<TermAgreementRequest> agreements) {
+        List<TermVersion> activeTerms = findActiveTermsOrThrow();
+        if (activeTerms.stream().noneMatch(term -> Boolean.TRUE.equals(term.getIsRequired()))) {
+            throw new BusinessException(ErrorCode.TERMS_NOT_CONFIGURED);
+        }
+
         Set<Long> agreedTermIds = agreements == null ? Set.of()
                 : agreements.stream()
                 .filter(a -> Boolean.TRUE.equals(a.agreed()))
                 .map(TermAgreementRequest::termId)
                 .collect(Collectors.toSet());
-        for (TermVersion term : termsMapper.findActiveTerms()) {
+        for (TermVersion term : activeTerms) {
             if (Boolean.TRUE.equals(term.getIsRequired()) && !agreedTermIds.contains(term.getId())) {
                 throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
             }
         }
+    }
+
+    private List<TermVersion> findActiveTermsOrThrow() {
+        List<TermVersion> activeTerms = termsMapper.findActiveTerms();
+        if (activeTerms.isEmpty()) {
+            throw new BusinessException(ErrorCode.TERMS_NOT_CONFIGURED);
+        }
+        return activeTerms;
     }
 }

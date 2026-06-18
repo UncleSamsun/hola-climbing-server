@@ -3,6 +3,7 @@ package com.holaclimbing.server.domain.report;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.TestcontainersConfiguration;
+import static com.holaclimbing.server.TestSignupRequests.signupRequest;
 import com.holaclimbing.server.domain.report.dto.request.CreateReportRequest;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
 import com.holaclimbing.server.domain.user.dto.request.SignupRequest;
@@ -36,6 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Sql(scripts = {
         "classpath:sql/users-schema.sql",
+        "classpath:sql/terms-data.sql",
         "classpath:sql/reports-schema.sql"
 }, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class ReportIntegrationTest {
@@ -178,7 +180,7 @@ class ReportIntegrationTest {
     private String register(String email, String nickname) throws Exception {
         mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new SignupRequest(email, PASSWORD, nickname))))
+                        .content(objectMapper.writeValueAsString(signupRequest(email, PASSWORD, nickname))))
                 .andExpect(status().isCreated());
         var user = userMapper.findByEmail(email);
         mockMvc.perform(post("/api/auth/email/verify").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(new VerifyEmailRequest(user.getEmailVerificationToken()))))

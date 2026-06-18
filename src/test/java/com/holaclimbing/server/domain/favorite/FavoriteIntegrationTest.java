@@ -3,6 +3,7 @@ package com.holaclimbing.server.domain.favorite;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.TestcontainersConfiguration;
+import static com.holaclimbing.server.TestSignupRequests.signupRequest;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
 import com.holaclimbing.server.domain.user.dto.request.SignupRequest;
 import com.holaclimbing.server.domain.user.dto.request.VerifyEmailRequest;
@@ -38,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Sql(scripts = {
         "classpath:sql/users-schema.sql",
+        "classpath:sql/terms-data.sql",
         "classpath:sql/gyms-schema.sql",
         "classpath:sql/gyms-data.sql",
         "classpath:sql/favorites-schema.sql"
@@ -150,7 +152,7 @@ class FavoriteIntegrationTest {
     private String register() throws Exception {
         mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new SignupRequest(EMAIL, PASSWORD, NICKNAME))))
+                        .content(objectMapper.writeValueAsString(signupRequest(EMAIL, PASSWORD, NICKNAME))))
                 .andExpect(status().isCreated());
 
         var user = userMapper.findByEmail(EMAIL);

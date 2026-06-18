@@ -28,12 +28,13 @@ public class TermsController {
 
     private final TermsService termsService;
 
+    @ApiErrorCodes({TERMS_NOT_CONFIGURED})
     @GetMapping
     public ApiResponse<List<TermResponse>> getActiveTerms() {
         return ApiResponse.success(termsService.getActiveTerms());
     }
 
-    @ApiErrorCodes({INVALID_INPUT})
+    @ApiErrorCodes({INVALID_INPUT, TERMS_NOT_CONFIGURED})
     @PostMapping("/agree")
     public ApiResponse<Void> agree(@AuthenticationPrincipal Long userId,
                                    @Valid @RequestBody AgreeTermsRequest request) {

@@ -44,7 +44,7 @@ public class AuthController {
 
     private final UserService userService;
 
-    @ApiErrorCodes({EMAIL_ALREADY_EXISTS, NICKNAME_ALREADY_EXISTS})
+    @ApiErrorCodes({EMAIL_ALREADY_EXISTS, NICKNAME_ALREADY_EXISTS, REQUIRED_TERMS_NOT_AGREED, TERMS_NOT_CONFIGURED})
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
         SignupResponse response = userService.signup(request);

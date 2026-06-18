@@ -3,21 +3,28 @@ package com.holaclimbing.server.domain.terms;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.TestcontainersConfiguration;
+import static com.holaclimbing.server.TestSignupRequests.signupRequest;
+import com.holaclimbing.server.common.config.CacheConfig;
+import com.holaclimbing.server.common.security.JwtTokenProvider;
 import com.holaclimbing.server.domain.terms.dto.request.AgreeTermsRequest;
 import com.holaclimbing.server.domain.terms.dto.request.TermAgreementRequest;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
 import com.holaclimbing.server.domain.user.dto.request.SignupRequest;
 import com.holaclimbing.server.domain.user.dto.request.VerifyEmailRequest;
 import com.holaclimbing.server.domain.user.mapper.UserMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.context.jdbc.SqlMergeMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -56,6 +63,20 @@ class TermsIntegrationTest {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private CacheManager cacheManager;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    @BeforeEach
+    void clearActiveTermsCache() {
+        Cache cache = cacheManager.getCache(CacheConfig.CACHE_ACTIVE_TERMS);
+        if (cache != null) {
+            cache.clear();
+        }
+    }
+
     @Test
     @DisplayName("활성 약관 조회 — 발효 중인 약관 3종을 반환한다")
     void getActiveTerms_returnsActiveTerms() throws Exception {
@@ -70,9 +91,20 @@ class TermsIntegrationTest {
     }
 
     @Test
+    @SqlMergeMode(SqlMergeMode.MergeMode.OVERRIDE)
+    @Sql(scripts = "classpath:sql/users-schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+    @DisplayName("활성 약관 조회 실패 — 약관 마스터가 없으면 503 U013")
+    void getActiveTerms_withoutConfiguredTerms_returnsTermsNotConfigured() throws Exception {
+        mockMvc.perform(get("/api/terms"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("U013"))
+                .andExpect(jsonPath("$.message").value("활성 약관 정보가 없습니다. 관리자에게 문의해 주세요."));
+    }
+
+    @Test
     @DisplayName("회원가입 — 필수 약관에 모두 동의하면 가입된다")
     void signup_withRequiredTerms_success() throws Exception {
-        var request = new SignupRequest("a@hola.com", PASSWORD, "climberone", List.of(
+        var request = signupRequest("a@hola.com", PASSWORD, "climberone", List.of(
                 new TermAgreementRequest(TERM_SERVICE, true),
                 new TermAgreementRequest(TERM_PRIVACY, true),
                 new TermAgreementRequest(TERM_MARKETING, false)));
@@ -85,13 +117,29 @@ class TermsIntegrationTest {
     @Test
     @DisplayName("회원가입 실패 — 필수 약관 미동의는 400 U010")
     void signup_missingRequiredTerm_returns400() throws Exception {
-        var request = new SignupRequest("a@hola.com", PASSWORD, "climberone", List.of(
+        var request = signupRequest("a@hola.com", PASSWORD, "climberone", List.of(
                 new TermAgreementRequest(TERM_SERVICE, true)));  // privacy 누락
         mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("U010"));
+    }
+
+    @Test
+    @SqlMergeMode(SqlMergeMode.MergeMode.OVERRIDE)
+    @Sql(scripts = "classpath:sql/users-schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+    @DisplayName("회원가입 실패 — 약관 마스터가 없으면 503 U013")
+    void signup_withoutConfiguredTerms_returnsTermsNotConfigured() throws Exception {
+        var request = signupRequest("a@hola.com", PASSWORD, "climberone", List.of(
+                new TermAgreementRequest(TERM_SERVICE, true),
+                new TermAgreementRequest(TERM_PRIVACY, true)));
+
+        mockMvc.perform(post("/api/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("U013"));
     }
 
     @Test
@@ -131,11 +179,27 @@ class TermsIntegrationTest {
                 .andExpect(jsonPath("$.code").value("C001"));
     }
 
+    @Test
+    @SqlMergeMode(SqlMergeMode.MergeMode.OVERRIDE)
+    @Sql(scripts = "classpath:sql/users-schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+    @DisplayName("약관 동의 실패 — 약관 마스터가 없으면 503 U013")
+    void agree_withoutConfiguredTerms_returnsTermsNotConfigured() throws Exception {
+        String token = jwtTokenProvider.createAccessToken(1L, "a@hola.com", "USER");
+        var request = new AgreeTermsRequest(List.of(new TermAgreementRequest(TERM_SERVICE, true)));
+
+        mockMvc.perform(post("/api/terms/agree")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("U013"));
+    }
+
     // ===== helpers =====
 
     /** 필수 약관에 동의하며 회원가입 → 이메일 인증 → 로그인까지 완료하고 accessToken 반환. */
     private String register(String email, String nickname) throws Exception {
-        var request = new SignupRequest(email, PASSWORD, nickname, List.of(
+        var request = signupRequest(email, PASSWORD, nickname, List.of(
                 new TermAgreementRequest(TERM_SERVICE, true),
                 new TermAgreementRequest(TERM_PRIVACY, true)));
         mockMvc.perform(post("/api/auth/signup")

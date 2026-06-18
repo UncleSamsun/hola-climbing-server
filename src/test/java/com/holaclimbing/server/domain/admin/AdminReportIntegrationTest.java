@@ -2,6 +2,7 @@ package com.holaclimbing.server.domain.admin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.TestcontainersConfiguration;
+import static com.holaclimbing.server.TestSignupRequests.signupRequest;
 import com.holaclimbing.server.domain.user.dto.request.LoginRequest;
 import com.holaclimbing.server.domain.user.dto.request.SignupRequest;
 import com.holaclimbing.server.domain.user.dto.request.VerifyEmailRequest;
@@ -32,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Sql(scripts = {
         "classpath:sql/users-schema.sql",
+        "classpath:sql/terms-data.sql",
         "classpath:sql/gyms-schema.sql",
         "classpath:sql/videos-schema.sql",
         "classpath:sql/reports-schema.sql"
@@ -146,7 +148,7 @@ class AdminReportIntegrationTest {
     private String registerAndLoginUser(String email, String nickname) throws Exception {
         mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new SignupRequest(email, PASSWORD, nickname))))
+                        .content(objectMapper.writeValueAsString(signupRequest(email, PASSWORD, nickname))))
                 .andExpect(status().isCreated());
 
         var user = userMapper.findByEmail(email);
