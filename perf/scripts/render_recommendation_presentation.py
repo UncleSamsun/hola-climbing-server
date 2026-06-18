@@ -219,6 +219,7 @@ def code_state_values(root, run_label):
         "captured_at": values.get("captured_at", "unknown"),
         "viewer_id": values.get("viewer_id", "unknown"),
         "page_size": values.get("page_size", "unknown"),
+        "candidate_window": values.get("candidate_window", "unknown"),
     }
 
 
@@ -244,7 +245,7 @@ def delta_text(before, after, suffix=""):
     if abs(diff) < 0.5:
         return "변화 없음"
     direction = "증가" if diff > 0 else "감소"
-    return f"{abs(diff):.0f}{suffix} {direction}"
+    return f"{abs(diff):,.0f}{suffix} {direction}"
 
 
 def new_canvas(root, title, subtitle, badge):
@@ -472,6 +473,16 @@ def render_k6_results(root, run_label):
     first_delta = values["first_page_p95"] - values["cursor_page_p95"]
     spread = values["p99"] - values["p50"]
     sql_share = values["sql_time"] / values["p95"] * 100 if values["p95"] else 0
+    spread_desc = (
+        f"상위 지연 구간도 {spread:.0f}ms 차이로 비교적 좁다."
+        if spread <= 100
+        else f"상위 지연 구간은 {spread:.0f}ms 차이로 넓다."
+    )
+    flow_delta_desc = "차이 없음"
+    if first_delta > 0:
+        flow_delta_desc = "첫 페이지가 더 느림"
+    elif first_delta < 0:
+        flow_delta_desc = "다음 페이지가 더 느림"
     image, r, d = new_canvas(
         root,
         "추천 피드 k6 결과 해석",
@@ -506,14 +517,14 @@ def render_k6_results(root, run_label):
         d.ellipse((x - 14, axis_y - 14, x + 14, axis_y + 14), fill=color)
         r.text_box((x - 70, axis_y - 78, x + 70, axis_y - 44), label, 22, PALETTE["muted"], max_lines=1)
         r.text_box((x - 82, axis_y + 30, x + 82, axis_y + 64), f"{value:.0f}ms", 24, color, max_lines=1)
-    r.text_box((118, 655, 800, 698), f"상위 지연 구간도 {spread:.0f}ms 차이로 비교적 좁다.", 23, PALETTE["ink"], min_size=19, max_lines=1)
+    r.text_box((118, 655, 800, 698), spread_desc, 23, PALETTE["ink"], min_size=19, max_lines=1)
 
     d.rounded_rectangle((900, 425, 1718, 725), radius=22, fill=PALETTE["white"], outline=PALETTE["line"], width=2)
     r.text_box((936, 462, 1660, 504), "흐름별 응답", 32, PALETTE["ink"], max_lines=1)
     flow_cards = [
         ("첫 페이지", f"p95 {values['first_page_p95']:.0f}ms", "초기 후보 계산 포함"),
         ("다음 페이지", f"p95 {values['cursor_page_p95']:.0f}ms", "cursor 기반 조회"),
-        ("차이", f"{first_delta:.0f}ms", "첫 페이지가 더 느림"),
+        ("차이", f"{abs(first_delta):.0f}ms", flow_delta_desc),
     ]
     x = 936
     for label, value, sub in flow_cards:
@@ -586,14 +597,14 @@ def render_before_after_template(root, run_label):
     r.text_box((118, 520, 430, 560), "항목", 24, PALETTE["ink"], max_lines=1)
     r.text_box((470, 520, 780, 560), "Before", 24, PALETTE["ink"], max_lines=1)
     r.text_box((860, 520, 1170, 560), "After", 24, PALETTE["ink"], max_lines=1)
-    r.text_box((1250, 520, 1645, 560), "개선 폭", 24, PALETTE["ink"], max_lines=1)
+    r.text_box((1250, 520, 1645, 560), "변화량", 24, PALETTE["ink"], max_lines=1)
     if after_available:
         rows = [
             ("p95 응답시간", f"{before_values['p95']:.0f}ms", f"{after_values['p95']:.0f}ms", delta_text(before_values["p95"], after_values["p95"], "ms")),
             ("p99 응답시간", f"{before_values['p99']:.0f}ms", f"{after_values['p99']:.0f}ms", delta_text(before_values["p99"], after_values["p99"], "ms")),
             ("SQL 실행시간", f"{before_values['sql_time']:.0f}ms", f"{after_values['sql_time']:.0f}ms", delta_text(before_values["sql_time"], after_values["sql_time"], "ms")),
-            ("temp blocks written", f"{before_plan['temp_written']:,}", f"{after_plan['temp_written']:,}", delta_text(before_plan["temp_written"], after_plan["temp_written"])),
-            ("scan rows", f"{before_plan['videos_rows_scanned']:,}", f"{after_plan['videos_rows_scanned']:,}", delta_text(before_plan["videos_rows_scanned"], after_plan["videos_rows_scanned"])),
+            ("temp blocks written", f"{before_plan['temp_written']:,}", f"{after_plan['temp_written']:,}", delta_text(before_plan["temp_written"], after_plan["temp_written"], " blocks")),
+            ("scan rows", f"{before_plan['videos_rows_scanned']:,}", f"{after_plan['videos_rows_scanned']:,}", delta_text(before_plan["videos_rows_scanned"], after_plan["videos_rows_scanned"], " rows")),
             ("오류율", f"{before_values['error_rate']:.0%}", f"{after_values['error_rate']:.0%}", "동일 기준 유지"),
         ]
     else:
@@ -649,12 +660,20 @@ def render_code_change_template(root, run_label):
         y += 62
 
     d.rounded_rectangle((900, 205, 1718, 515), radius=22, fill=PALETTE["amber_bg"], outline=PALETTE["amber_line"], width=2)
-    r.text_box((936, 240, 1660, 280), "개선 후 코드 캡처 대기", 30, PALETTE["ink"], max_lines=1)
-    after_items = [
-        ("변경 diff", "쿼리 후보군 축소, 인덱스, cache 중 실제 적용 내용"),
-        ("after screenshot", "동일 영역의 코드 캡처를 after/screenshots에 저장"),
-        ("after metrics", "p95/p99, SQL time, temp blocks를 같은 표에 입력"),
-    ]
+    if run_label == "after":
+        r.text_box((936, 240, 1660, 280), "적용된 변경 내용", 30, PALETTE["ink"], max_lines=1)
+        after_items = [
+            ("인덱스", "user_blocks blocked_id, videos public recent"),
+            ("쿼리 구조", "blocked_users CTE + candidate_videos"),
+            ("후보군 제한", f"candidate_window {state['candidate_window']}"),
+        ]
+    else:
+        r.text_box((936, 240, 1660, 280), "개선 후 코드 캡처 대기", 30, PALETTE["ink"], max_lines=1)
+        after_items = [
+            ("변경 diff", "쿼리 후보군 축소, 인덱스, cache 중 실제 적용 내용"),
+            ("after screenshot", "동일 영역의 코드 캡처를 after/screenshots에 저장"),
+            ("after metrics", "p95/p99, SQL time, temp blocks를 같은 표에 입력"),
+        ]
     y = 312
     for title, desc in after_items:
         draw_list_item(r, 936, y, title, desc, color=PALETTE["amber"])
@@ -686,7 +705,7 @@ def render_code_change_template(root, run_label):
         r,
         1132,
         "code-state.txt - screenshots/01-code-state - git diff after optimization",
-        f"{label}_commit={state['commit']} - p95={values['p95']:.0f}ms - after_commit=pending",
+        f"{label}_commit={state['commit']} - p95={values['p95']:.0f}ms - after_commit={state['commit'] if run_label == 'after' else 'pending'}",
     )
 
     r.assert_no_overflow()

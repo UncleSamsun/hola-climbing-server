@@ -9,16 +9,18 @@ VIEWER_ID="${VIEWER_ID:-1}"
 PAGE_SIZE="${PAGE_SIZE:-20}"
 CANDIDATE_WINDOW="${CANDIDATE_WINDOW:-5000}"
 OUT_DIR="${ROOT_DIR}/perf/results/recommendation-feed/${RUN_LABEL}"
+OUT_PATHSPEC="perf/results/recommendation-feed/${RUN_LABEL}"
 
 mkdir -p "${OUT_DIR}/screenshots"
 
 git_commit="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
+git_status_short="$(git -C "${ROOT_DIR}" status --short -- . ":(exclude)${OUT_PATHSPEC}")"
 sanitized_database_url="$(printf '%s' "${DATABASE_URL}" | sed -E 's#(://[^:/@]+):[^@]*@#\1:***@#')"
 
 {
   echo "git_commit=${git_commit}"
   echo "git_status_short_start"
-  git -C "${ROOT_DIR}" status --short
+  printf '%s\n' "${git_status_short}"
   echo "git_status_short_end"
   echo "captured_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "database_url=${sanitized_database_url}"
