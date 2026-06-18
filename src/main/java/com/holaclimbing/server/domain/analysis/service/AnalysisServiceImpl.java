@@ -26,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -105,11 +107,11 @@ public class AnalysisServiceImpl implements AnalysisService {
         if (result == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "분석 완료 결과가 있는 영상만 피드백할 수 있습니다.");
         }
-        List<String> finalTechniques = AnalysisTechniqueCatalog.normalizeTechniques(request.techniques());
+        List<String> finalTechniques = resolveFinalTechniques(request, result);
         analysisMapper.updateFinalResultFromFeedback(
                 videoId,
                 toJson(finalTechniques),
-                request.isDynamic(),
+                request.isDynamic() == null ? result.getFinalIsDynamic() : request.isDynamic(),
                 request.note(),
                 userId
         );
@@ -247,6 +249,29 @@ public class AnalysisServiceImpl implements AnalysisService {
         } catch (JsonProcessingException e) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "분석 결과 파싱에 실패했습니다.");
         }
+    }
+
+    private List<String> resolveFinalTechniques(AnalysisFeedbackRequest request, AnalysisVideoResult result) {
+        if (request.hasVideoLevelFeedback()) {
+            return AnalysisTechniqueCatalog.normalizeTechniques(request.techniques());
+        }
+
+        LinkedHashSet<String> techniques = new LinkedHashSet<>(parseTechniqueJson(result.getFinalTechniques()));
+        String technique = AnalysisTechniqueCatalog.normalizeTechnique(request.techniqueLabel());
+        if (technique == null) {
+            return AnalysisTechniqueCatalog.normalizeTechniques(new ArrayList<>(techniques));
+        }
+
+        if (Boolean.TRUE.equals(request.isCorrect())) {
+            techniques.add(technique);
+        } else {
+            techniques.remove(technique);
+            String corrected = AnalysisTechniqueCatalog.normalizeTechnique(request.correctLabel());
+            if (corrected != null) {
+                techniques.add(corrected);
+            }
+        }
+        return AnalysisTechniqueCatalog.normalizeTechniques(new ArrayList<>(techniques));
     }
 
     private Double ratio(long numerator, long denominator) {

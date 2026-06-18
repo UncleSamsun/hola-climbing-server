@@ -396,6 +396,47 @@ class AnalysisIntegrationTest {
     }
 
     @Test
+    @DisplayName("분석 피드백 — 레거시 단일 기술 피드백도 final 결과에 반영한다")
+    void submitFeedback_legacySingleTechniquePayload_updatesFinalTechniques() throws Exception {
+        String token = register("a@hola.com", "climberone");
+        long videoId = createVideo(token);
+
+        ingest(videoId, new AnalysisIngestRequest("done", "rule_v3+flow_rf_v2", List.of(
+                new AnalysisSegmentPayload(0, 0, 1000, "high_step", false, 0.9f),
+                new AnalysisSegmentPayload(1, 1000, 2000, "dyno", true, 0.8f)),
+                List.of("high_step", "dyno"), false, 0.18f));
+
+        String request = """
+                {
+                  "techniqueLabel": "high_step",
+                  "isCorrect": false,
+                  "correctLabel": "flagging",
+                  "note": "high_step이 아니라 flagging이에요"
+                }
+                """;
+        mockMvc.perform(post("/api/videos/" + videoId + "/analysis/feedback")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.videoId").value(videoId));
+
+        String aiTechniques = jdbcTemplate.queryForObject(
+                "SELECT ai_techniques::text FROM analysis_video_results WHERE video_id = ?",
+                String.class, videoId);
+        String finalTechniques = jdbcTemplate.queryForObject(
+                "SELECT final_techniques::text FROM analysis_video_results WHERE video_id = ?",
+                String.class, videoId);
+        Boolean finalIsDynamic = jdbcTemplate.queryForObject(
+                "SELECT final_is_dynamic FROM analysis_video_results WHERE video_id = ?",
+                Boolean.class, videoId);
+
+        org.assertj.core.api.Assertions.assertThat(aiTechniques).isEqualTo("[\"high_step\", \"dyno\"]");
+        org.assertj.core.api.Assertions.assertThat(finalTechniques).isEqualTo("[\"flagging\", \"dyno\"]");
+        org.assertj.core.api.Assertions.assertThat(finalIsDynamic).isFalse();
+    }
+
+    @Test
     @DisplayName("분석 피드백 실패 — 공개 영상이어도 소유자가 아니면 등록할 수 없다")
     void submitFeedback_publicVideoByOther_returns403() throws Exception {
         String owner = register("a@hola.com", "climberone");
