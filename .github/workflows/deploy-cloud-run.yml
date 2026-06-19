@@ -90,6 +90,8 @@ jobs:
             SPRING_DATA_REDIS_HOST=${{ vars.AI_VM_PRIVATE_IP }}
             SPRING_DATA_REDIS_PORT=6379
             GCS_BUCKET=${{ vars.GCS_BUCKET }}
+            GCS_THUMBNAIL_PUBLIC_BUCKET=hola-climbing-thumbnails-public
+            GCS_THUMBNAIL_PUBLIC_BASE_URL=https://storage.googleapis.com/hola-climbing-thumbnails-public
             APP_MAIL_MODE=smtp
             APP_MAIL_FROM=hola.climbing@gmail.com
             SPRING_MAIL_HOST=smtp.gmail.com

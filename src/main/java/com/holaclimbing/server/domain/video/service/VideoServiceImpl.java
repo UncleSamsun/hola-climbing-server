@@ -88,11 +88,11 @@ public class VideoServiceImpl implements VideoService {
         String thumbnailPath = "%s/%d/%s.%s".formatted(
                 THUMBNAIL_PREFIX, userId, UUID.randomUUID(), upload.extension());
         try {
-            gcsStorageService.uploadBytes(thumbnailPath, upload.contentType(), image.getBytes());
+            gcsStorageService.uploadPublicThumbnailBytes(thumbnailPath, upload.contentType(), image.getBytes());
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.GCS_UPLOAD_FAILED);
         }
-        return new ThumbnailUploadResponse(thumbnailPath, gcsStorageService.createReadUrl(thumbnailPath));
+        return new ThumbnailUploadResponse(thumbnailPath, gcsStorageService.createPublicThumbnailUrl(thumbnailPath));
     }
 
     @Override
@@ -143,7 +143,7 @@ public class VideoServiceImpl implements VideoService {
         List<VideoSummaryResponse> content = pageRows.stream()
                 .map(v -> VideoSummaryResponse.from(v,
                         gcsStorageService.createReadUrl(v.getGcsPath()),
-                        gcsStorageService.createReadUrl(v.getThumbnailPath())))
+                        gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath())))
                 .toList();
         String nextCursor = hasNext ? CursorCodec.encode(pageRows.get(pageRows.size() - 1).getId()) : null;
         return CursorPageResponse.of(content, nextCursor, hasNext);
@@ -156,7 +156,7 @@ public class VideoServiceImpl implements VideoService {
                 .stream()
                 .map(v -> VideoSummaryResponse.from(v,
                         gcsStorageService.createReadUrl(v.getGcsPath()),
-                        gcsStorageService.createReadUrl(v.getThumbnailPath())))
+                        gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath())))
                 .toList();
         return PageResponse.of(content, page, size, total);
     }
@@ -238,7 +238,7 @@ public class VideoServiceImpl implements VideoService {
     private VideoDetailResponse toDetail(Video video, boolean isLiked) {
         return VideoDetailResponse.of(video, isLiked,
                 gcsStorageService.createReadUrl(video.getGcsPath()),
-                gcsStorageService.createReadUrl(video.getThumbnailPath()));
+                gcsStorageService.createPublicThumbnailUrl(video.getThumbnailPath()));
     }
 
     private String extractExtension(String fileName) {

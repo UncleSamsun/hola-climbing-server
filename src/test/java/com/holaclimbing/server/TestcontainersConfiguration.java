@@ -67,11 +67,16 @@ public class TestcontainersConfiguration {
 				.getService();
 
 		// 운영 버킷과 동일 이름으로 미리 생성 (이미 존재하면 무시)
+		createBucketIfAbsent(storage, props.bucket());
+		createBucketIfAbsent(storage, props.thumbnailPublicBucket());
+		return storage;
+	}
+
+	private void createBucketIfAbsent(Storage storage, String bucket) {
 		try {
-			storage.create(BucketInfo.of(props.bucket()));
+			storage.create(BucketInfo.of(bucket));
 		} catch (StorageException ignored) {
 		}
-		return storage;
 	}
 
 	/**

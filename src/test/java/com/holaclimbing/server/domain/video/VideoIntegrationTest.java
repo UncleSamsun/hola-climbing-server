@@ -307,7 +307,7 @@ class VideoIntegrationTest {
     }
 
     @Test
-    @DisplayName("썸네일 업로드 — multipart 이미지를 서버가 GCS에 업로드하고 경로와 읽기 URL을 반환한다")
+    @DisplayName("썸네일 업로드 — multipart 이미지를 public thumbnail bucket에 업로드하고 public URL을 반환한다")
     void uploadThumbnail_success() throws Exception {
         String token = register("thumbnail@hola.com", "thumbuser");
         MockMultipartFile image = new MockMultipartFile(
@@ -324,11 +324,13 @@ class VideoIntegrationTest {
                         "videos/thumbnails/")))
                 .andExpect(jsonPath("$.data.thumbnailPath").value(org.hamcrest.Matchers.endsWith(".jpg")))
                 .andExpect(jsonPath("$.data.thumbnailUrl").value(org.hamcrest.Matchers.containsString(
-                        "X-Goog-Signature=")));
+                        "https://storage.googleapis.com/hola-climbing-thumbnails-public/videos/thumbnails/")))
+                .andExpect(jsonPath("$.data.thumbnailUrl").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("X-Goog-Signature="))));
     }
 
     @Test
-    @DisplayName("영상 등록 성공 — 서버가 업로드한 썸네일 경로를 저장하고 읽기 URL을 반환한다")
+    @DisplayName("영상 등록 성공 — 서버가 업로드한 썸네일 경로를 저장하고 public thumbnail URL을 반환한다")
     void createVideo_withUploadedThumbnail_returnsThumbnailUrl() throws Exception {
         String token = register("thumb-video@hola.com", "thumbvideo");
         String thumbnailPath = uploadedThumbnailPath(token);
@@ -343,7 +345,9 @@ class VideoIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.thumbnailPath").value(thumbnailPath))
                 .andExpect(jsonPath("$.data.thumbnailUrl").value(org.hamcrest.Matchers.containsString(
-                        "X-Goog-Signature=")));
+                        "https://storage.googleapis.com/hola-climbing-thumbnails-public/videos/thumbnails/")))
+                .andExpect(jsonPath("$.data.thumbnailUrl").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("X-Goog-Signature="))));
     }
 
     @Test

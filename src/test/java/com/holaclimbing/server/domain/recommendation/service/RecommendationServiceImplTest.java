@@ -65,6 +65,25 @@ class RecommendationServiceImplTest {
     }
 
     @Test
+    void getVideoFeedDoesNotCreateSignedUrlsForFeedItems() {
+        Video first = video(1L);
+        when(recommendationMapper.findFeedSnapshotCandidates(eq(42L), eq(1_000), eq(5_000)))
+                .thenReturn(List.of(first));
+        when(gcsStorageService.createPublicThumbnailUrl(eq("videos/thumbnails/1.jpg")))
+                .thenReturn("https://storage.googleapis.com/hola-climbing-thumbnails-public/videos/thumbnails/1.jpg");
+
+        var page = service.getVideoFeed(42L, null, 20);
+
+        assertThat(page.content()).hasSize(1);
+        assertThat(page.content().getFirst().thumbnailUrl())
+                .isEqualTo("https://storage.googleapis.com/hola-climbing-thumbnails-public/videos/thumbnails/1.jpg");
+        assertThat(page.content().getFirst().streamUrl()).isNull();
+        verify(gcsStorageService, never()).createReadUrl(eq("videos/uploads/1.mp4"));
+        verify(gcsStorageService, never()).createReadUrl(eq("videos/thumbnails/1.jpg"));
+        verify(gcsStorageService).createPublicThumbnailUrl(eq("videos/thumbnails/1.jpg"));
+    }
+
+    @Test
     void getVideoFeedReadsCursorPageFromSnapshotWithoutRebuildingRanking() {
         RecommendationFeedSnapshot snapshot = new RecommendationFeedSnapshot(
                 "snap-1",

@@ -124,6 +124,8 @@ gcs:
   bucket: ${GCS_BUCKET:hola-climbing-log-videos}
   upload-prefix: videos/uploads        # 업로드 객체 경로 prefix
   signed-url-minutes: 15               # Signed URL 유효시간(분)
+  thumbnail-public-bucket: ${GCS_THUMBNAIL_PUBLIC_BUCKET:hola-climbing-thumbnails-public}
+  thumbnail-public-base-url: ${GCS_THUMBNAIL_PUBLIC_BASE_URL:https://storage.googleapis.com/${GCS_THUMBNAIL_PUBLIC_BUCKET:hola-climbing-thumbnails-public}}
 
 # AI 분석 워커(Python) 연동 — 영상 등록 시 Redis Streams로 요청하고 콜백 시크릿을 검증
 ai:

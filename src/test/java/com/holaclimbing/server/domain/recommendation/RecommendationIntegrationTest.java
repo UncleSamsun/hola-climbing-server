@@ -88,6 +88,11 @@ class RecommendationIntegrationTest {
                 .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1002))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("파랑"))
                 .andExpect(jsonPath("$.data.content[0].grade").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].thumbnailUrl").value(org.hamcrest.Matchers.startsWith(
+                        "https://storage.googleapis.com/hola-climbing-thumbnails-public/videos/thumbnails/")))
+                .andExpect(jsonPath("$.data.content[0].thumbnailUrl").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("X-Goog-Signature="))))
+                .andExpect(jsonPath("$.data.content[0].streamUrl").doesNotExist())
                 .andExpect(jsonPath("$.data.content[1].source").value("recommended"))
                 .andExpect(jsonPath("$.data.content[1].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[1].gymGrade.id").value(1002))
@@ -438,8 +443,9 @@ class RecommendationIntegrationTest {
         long userId = dataOf(mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())).path("userId").asLong();
         String path = "videos/uploads/" + userId + "/test-" + java.util.UUID.randomUUID() + ".mp4";
+        String thumbnailPath = "videos/thumbnails/" + userId + "/test-" + java.util.UUID.randomUUID() + ".jpg";
         var request = new CreateVideoRequest(gymId, title, "desc", gymGradeId,
-                path, null, 30, java.time.LocalDate.of(2026, 6, 3), true);
+                path, thumbnailPath, 30, java.time.LocalDate.of(2026, 6, 3), true);
         return dataOf(mockMvc.perform(post("/api/videos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -81,15 +81,30 @@ public class GcsStorageService {
         return normalizeSchemeForCustomHost(signWithRetry(blobInfo, opts).toString());
     }
 
+    /** Public thumbnail bucket에 저장된 객체 URL. Signed URL을 만들지 않는다. */
+    public String createPublicThumbnailUrl(String objectPath) {
+        if (objectPath == null || objectPath.isBlank()) {
+            return null;
+        }
+        return trimTrailingSlashes(properties.thumbnailPublicBaseUrl()) + "/" + trimLeadingSlashes(objectPath);
+    }
+
     /** 서버가 직접 받은 작은 바이너리를 GCS 객체로 저장한다. */
     public void uploadBytes(String objectPath, String contentType, byte[] bytes) {
-        BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(properties.bucket(), objectPath))
-                .setContentType(contentType)
-                .build();
+        uploadBytesToBucket(properties.bucket(), objectPath, contentType, bytes);
+    }
+
+    /** 썸네일 public bucket에 작은 이미지 바이너리를 저장한다. */
+    public void uploadPublicThumbnailBytes(String objectPath, String contentType, byte[] bytes) {
+        uploadBytesToBucket(properties.thumbnailPublicBucket(), objectPath, contentType, bytes);
+    }
+
+    private void uploadBytesToBucket(String bucket, String objectPath, String contentType, byte[] bytes) {
+        BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(bucket, objectPath)).setContentType(contentType).build();
         try {
             storage.create(blobInfo, bytes);
         } catch (RuntimeException e) {
-            log.warn("GCS 객체 업로드 실패 — objectPath={}, reason={}", objectPath, e.getMessage());
+            log.warn("GCS 객체 업로드 실패 — bucket={}, objectPath={}, reason={}", bucket, objectPath, e.getMessage());
             throw new BusinessException(ErrorCode.GCS_UPLOAD_FAILED);
         }
     }
@@ -161,5 +176,19 @@ public class GcsStorageService {
             host = host.substring(0, host.length() - 1);
         }
         return host;
+    }
+
+    private String trimTrailingSlashes(String value) {
+        while (value.endsWith("/")) {
+            value = value.substring(0, value.length() - 1);
+        }
+        return value;
+    }
+
+    private String trimLeadingSlashes(String value) {
+        while (value.startsWith("/")) {
+            value = value.substring(1);
+        }
+        return value;
     }
 }

@@ -136,8 +136,8 @@ public class RecommendationServiceImpl implements RecommendationService {
         return pageVideos
                 .stream()
                 .map(v -> RecommendedVideoResponse.of(v,
-                        gcsStorageService.createReadUrl(v.getGcsPath()),
-                        gcsStorageService.createReadUrl(v.getThumbnailPath()),
+                        null,
+                        gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath()),
                         Integer.valueOf(1).equals(v.getFollowingRank()) ? SOURCE_FOLLOWING : SOURCE_RECOMMENDED))
                 .toList();
     }
@@ -158,8 +158,8 @@ public class RecommendationServiceImpl implements RecommendationService {
         List<RecommendedVideoResponse> content = pageVideos
                 .stream()
                 .map(v -> RecommendedVideoResponse.of(v,
-                        gcsStorageService.createReadUrl(v.getGcsPath()),
-                        gcsStorageService.createReadUrl(v.getThumbnailPath()),
+                        null,
+                        gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath()),
                         Integer.valueOf(1).equals(v.getFollowingRank()) ? SOURCE_FOLLOWING : SOURCE_RECOMMENDED))
                 .toList();
 

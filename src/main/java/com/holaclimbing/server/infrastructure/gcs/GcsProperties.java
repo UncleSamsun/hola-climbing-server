@@ -9,11 +9,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * - bucket: 영상 버킷 이름
  * - upload-prefix: 업로드 객체 경로 prefix (예: videos/uploads)
  * - signed-url-minutes: Signed URL 유효시간 (분)
+ * - thumbnail-public-bucket: public thumbnail bucket 이름
+ * - thumbnail-public-base-url: public thumbnail bucket base URL
  */
 @ConfigurationProperties(prefix = "gcs")
 public record GcsProperties(
         @NotBlank String bucket,
         @NotBlank String uploadPrefix,
-        @Positive int signedUrlMinutes
+        @Positive int signedUrlMinutes,
+        @NotBlank String thumbnailPublicBucket,
+        @NotBlank String thumbnailPublicBaseUrl
 ) {
 }
