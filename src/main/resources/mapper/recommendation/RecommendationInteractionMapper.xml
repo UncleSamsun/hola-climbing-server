@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.holaclimbing.server.domain.recommendation.mapper.RecommendationInteractionMapper">
+
+    <insert id="upsertImpressions">
+        INSERT INTO user_video_interactions (user_id, video_id, impression_count, last_impressed_at, updated_at)
+        VALUES
+        <foreach collection="videoIds" item="videoId" separator=",">
+            (#{userId}, #{videoId}, 1, NOW(), NOW())
+        </foreach>
+        ON CONFLICT (user_id, video_id)
+        DO UPDATE SET
+            impression_count = user_video_interactions.impression_count + 1,
+            last_impressed_at = NOW(),
+            updated_at = NOW()
+    </insert>
+
+    <insert id="upsertView">
+        INSERT INTO user_video_interactions (user_id, video_id, viewed_count, last_viewed_at, updated_at)
+        VALUES (#{userId}, #{videoId}, 1, NOW(), NOW())
+        ON CONFLICT (user_id, video_id)
+        DO UPDATE SET
+            viewed_count = user_video_interactions.viewed_count + 1,
+            last_viewed_at = NOW(),
+            updated_at = NOW()
+    </insert>
+
+</mapper>

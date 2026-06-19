@@ -8,6 +8,7 @@ RUN_LABEL="${RUN_LABEL:-local-baseline}"
 VIEWER_ID="${VIEWER_ID:-1}"
 PAGE_SIZE="${PAGE_SIZE:-20}"
 CANDIDATE_WINDOW="${CANDIDATE_WINDOW:-5000}"
+SNAPSHOT_SIZE="${SNAPSHOT_SIZE:-1000}"
 OUT_DIR="${ROOT_DIR}/perf/results/recommendation-feed/${RUN_LABEL}"
 OUT_PATHSPEC="perf/results/recommendation-feed/${RUN_LABEL}"
 
@@ -27,6 +28,7 @@ sanitized_database_url="$(printf '%s' "${DATABASE_URL}" | sed -E 's#(://[^:/@]+)
   echo "viewer_id=${VIEWER_ID}"
   echo "page_size=${PAGE_SIZE}"
   echo "candidate_window=${CANDIDATE_WINDOW}"
+  echo "snapshot_size=${SNAPSHOT_SIZE}"
 } > "${OUT_DIR}/code-state.txt"
 
 psql "${DATABASE_URL}" \
@@ -39,6 +41,7 @@ psql "${DATABASE_URL}" \
   -v viewer_id="${VIEWER_ID}" \
   -v page_size="${PAGE_SIZE}" \
   -v candidate_window="${CANDIDATE_WINDOW}" \
+  -v snapshot_size="${SNAPSHOT_SIZE}" \
   -f "${ROOT_DIR}/perf/sql/recommendation_feed_explain_text.sql" \
   > "${OUT_DIR}/recommendation-feed-explain.txt"
 
@@ -47,6 +50,7 @@ psql "${DATABASE_URL}" \
   -v viewer_id="${VIEWER_ID}" \
   -v page_size="${PAGE_SIZE}" \
   -v candidate_window="${CANDIDATE_WINDOW}" \
+  -v snapshot_size="${SNAPSHOT_SIZE}" \
   -f "${ROOT_DIR}/perf/sql/recommendation_feed_explain_json.sql" \
   > "${OUT_DIR}/recommendation-feed-explain.json"
 

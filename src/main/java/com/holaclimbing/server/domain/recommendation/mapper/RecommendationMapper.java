@@ -17,6 +17,13 @@ public interface RecommendationMapper {
                                @Param("limit") int limit,
                                @Param("candidateWindow") int candidateWindow);
 
+    List<Video> findFeedSnapshotCandidates(@Param("userId") Long userId,
+                                           @Param("limit") int limit,
+                                           @Param("candidateWindow") int candidateWindow);
+
+    List<Video> findFeedVideosByIds(@Param("userId") Long userId,
+                                    @Param("videoIds") List<Long> videoIds);
+
     /** 주변 암장 추천 — 반경 필터 + 스타일 유사도 우선 + 거리 fallback. */
     List<RecommendedGym> findNearbyGyms(@Param("userId") Long userId,
                                         @Param("lat") double lat,

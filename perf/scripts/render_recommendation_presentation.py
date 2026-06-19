@@ -220,6 +220,7 @@ def code_state_values(root, run_label):
         "viewer_id": values.get("viewer_id", "unknown"),
         "page_size": values.get("page_size", "unknown"),
         "candidate_window": values.get("candidate_window", "unknown"),
+        "snapshot_size": values.get("snapshot_size", "unknown"),
     }
 
 
@@ -305,6 +306,7 @@ def render(root, run_label):
     label = run_display_name(run_label)
     values = metric_values(root, run_label)
     plan = plan_values(root, run_label)
+    state = code_state_values(root, run_label)
     width, height = 1800, 1260
     image = Image.new("RGB", (width, height), PALETTE["bg"])
     r = Renderer(image, root)
@@ -314,7 +316,7 @@ def render(root, run_label):
     d.rectangle((44, 36, width - 44, 156), fill="#EFF6FF")
     d.line((44, 156, width - 44, 156), fill=PALETTE["line"], width=2)
     r.text_box((82, 64, 1220, 112), "추천 피드 성능 테스트", 44, PALETTE["blue"], max_lines=1)
-    r.text_box((82, 118, 1220, 148), f"{label} 결과 요약 - GET /api/recommendations/videos?size=20", 24, PALETTE["muted"], max_lines=1)
+    r.text_box((82, 118, 1220, 148), f"{label} 결과 요약 - size={state['page_size']} / snapshot={state['snapshot_size']}", 24, PALETTE["muted"], max_lines=1)
     d.rounded_rectangle((1285, 70, 1680, 124), radius=14, fill=PALETTE["green_bg"], outline=PALETTE["green_line"], width=1)
     r.text_box((1315, 84, 1650, 112), "seed: videos 100k - users 10k", 22, PALETTE["green"], max_lines=1)
 
@@ -336,8 +338,8 @@ def render(root, run_label):
     r.text_box((118, 480, 720, 522), "테스트 흐름", 32, PALETTE["ink"], max_lines=1)
     flow = [
         ("login", "perf 사용자 5명"),
-        ("첫 페이지", f"p95 {values['first_page_p95']:.0f}ms"),
-        ("다음 페이지", f"p95 {values['cursor_page_p95']:.0f}ms"),
+        ("snapshot 생성", f"p95 {values['first_page_p95']:.0f}ms"),
+        ("snapshot 조회", f"p95 {values['cursor_page_p95']:.0f}ms"),
     ]
     x = 118
     for index, (name, detail) in enumerate(flow):
@@ -358,7 +360,7 @@ def render(root, run_label):
     d.rounded_rectangle((82, 825, 1718, 1075), radius=22, fill=PALETTE["white"], outline=PALETTE["line"], width=2)
     r.text_box((118, 863, 1660, 905), "성능결과 해석", 32, PALETTE["ink"], max_lines=1)
     summary = [
-        f"{label} API 지연은 p95 {values['p95']:.0f}ms이고, feed query 한 번에 SQL이 약 {values['sql_time']:.0f}ms를 사용한다.",
+        f"{label} API 지연은 p95 {values['p95']:.0f}ms이고, 첫 페이지 snapshot SQL이 약 {values['sql_time']:.0f}ms를 사용한다.",
         "실행 계획은 scan rows, temp blocks, 정렬 방식이 API 지연으로 이어지는지 확인하는 핵심 근거다.",
         "다음 비교는 동일 seed와 k6 script로 p95/p99, SQL 시간, temp blocks가 함께 줄었는지 확인한다.",
     ]
@@ -394,6 +396,7 @@ def render_sql_bottleneck(root, run_label):
     label = run_display_name(run_label)
     values = metric_values(root, run_label)
     plan = plan_values(root, run_label)
+    state = code_state_values(root, run_label)
     sql_share = plan["execution_time"] / values["p95"] * 100 if values["p95"] else 0
     image, r, d = new_canvas(
         root,
@@ -425,7 +428,7 @@ def render_sql_bottleneck(root, run_label):
         ("Hash Join", "gym/users/follows 결합"),
         (sort_label, sort_detail),
         ("Gather Merge", f"workers {plan['workers_launched']}"),
-        ("Limit 20", "최종 응답"),
+        (f"Limit {state['snapshot_size']}", "snapshot 후보"),
     ]
     x = 118
     for index, (name, detail) in enumerate(flow):

@@ -1,6 +1,7 @@
 package com.holaclimbing.server.domain.recommendation.dto;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
@@ -19,6 +20,14 @@ public final class RecommendationCursorCodec {
 
     public static String encode(RecommendationCursor cursor) {
         try {
+            if (cursor.isSnapshot()) {
+                SnapshotCursorPayload payload = new SnapshotCursorPayload(
+                        "snapshot",
+                        cursor.getSnapshotId(),
+                        cursor.getOffset());
+                byte[] bytes = OBJECT_MAPPER.writeValueAsBytes(payload);
+                return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+            }
             CursorPayload payload = new CursorPayload(
                     cursor.getDistanceNullRank(),
                     cursor.getRankingDistance(),
@@ -39,9 +48,14 @@ public final class RecommendationCursorCodec {
 
         try {
             byte[] decoded = Base64.getUrlDecoder().decode(cursor);
-            CursorPayload payload = OBJECT_MAPPER.readValue(
-                    new String(decoded, StandardCharsets.UTF_8),
-                    CursorPayload.class);
+            String json = new String(decoded, StandardCharsets.UTF_8);
+            JsonNode root = OBJECT_MAPPER.readTree(json);
+            if (root.has("type")) {
+                SnapshotCursorPayload payload = OBJECT_MAPPER.treeToValue(root, SnapshotCursorPayload.class);
+                validate(payload);
+                return RecommendationCursor.snapshot(payload.snapshotId(), payload.offset());
+            }
+            CursorPayload payload = OBJECT_MAPPER.readValue(json, CursorPayload.class);
             validate(payload);
             return new RecommendationCursor(
                     payload.distanceNullRank(),
@@ -71,6 +85,17 @@ public final class RecommendationCursorCodec {
         }
     }
 
+    private static void validate(SnapshotCursorPayload payload) {
+        if (payload == null
+                || !"snapshot".equals(payload.type())
+                || payload.snapshotId() == null
+                || payload.snapshotId().isBlank()
+                || payload.offset() == null
+                || payload.offset() < 0) {
+            throw new IllegalArgumentException("invalid snapshot cursor");
+        }
+    }
+
     private static BusinessException invalidCursor() {
         return new BusinessException(ErrorCode.INVALID_INPUT, "잘못된 커서입니다.");
     }
@@ -81,5 +106,11 @@ public final class RecommendationCursorCodec {
             Integer followingRank,
             String createdAt,
             Long id) {
+    }
+
+    private record SnapshotCursorPayload(
+            String type,
+            String snapshotId,
+            Integer offset) {
     }
 }

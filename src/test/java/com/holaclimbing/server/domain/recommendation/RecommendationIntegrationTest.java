@@ -23,8 +23,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -189,6 +192,64 @@ class RecommendationIntegrationTest {
                 .andExpect(jsonPath("$.data.content[0].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[1].source").value("recommended"))
                 .andExpect(jsonPath("$.data.content[1].gymName").value("ClimbingPark Hongdae"));
+    }
+
+    @Test
+    @DisplayName("홈 피드 — 최근 노출/조회된 영상은 같은 조건의 미시청 영상보다 뒤로 밀린다")
+    void recommendationFeedPenalizesRecentlySeenVideos() throws Exception {
+        String viewer = register("viewer-seen@hola.com", "viewer");
+        String unseenUploader = register("unseen@hola.com", "unseenuser");
+        String impressedUploader = register("impressed@hola.com", "impresseduser");
+        String viewedUploader = register("viewed@hola.com", "vieweduser");
+        long viewerId = userMapper.findByEmail("viewer-seen@hola.com").getId();
+
+        long unseenVideoId = createVideoAtGym(unseenUploader, 1L, 1002L, "unseen clip");
+        long impressedVideoId = createVideoAtGym(impressedUploader, 1L, 1002L, "impressed clip");
+        long viewedVideoId = createVideoAtGym(viewedUploader, 1L, 1002L, "viewed clip");
+
+        jdbcTemplate.update("""
+                INSERT INTO user_video_interactions (user_id, video_id, impression_count, last_impressed_at)
+                VALUES (?, ?, 1, NOW())
+                """, viewerId, impressedVideoId);
+        jdbcTemplate.update("""
+                INSERT INTO user_video_interactions (user_id, video_id, viewed_count, last_viewed_at)
+                VALUES (?, ?, 1, NOW())
+                """, viewerId, viewedVideoId);
+
+        JsonNode page = dataOf(mockMvc.perform(get("/api/recommendations/videos")
+                        .param("size", "3")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(3)));
+
+        List<Long> orderedVideoIds = new ArrayList<>();
+        for (JsonNode item : page.path("content")) {
+            orderedVideoIds.add(item.path("id").asLong());
+        }
+
+        assertThat(orderedVideoIds).containsExactly(unseenVideoId, impressedVideoId, viewedVideoId);
+    }
+
+    @Test
+    @DisplayName("홈 피드 — 반환한 영상은 사용자별 노출 이력으로 기록된다")
+    void getVideoFeed_recordsReturnedVideosAsImpressions() throws Exception {
+        String viewer = register("viewer-impression@hola.com", "viewer");
+        String uploader = register("impression-uploader@hola.com", "impression");
+        long viewerId = userMapper.findByEmail("viewer-impression@hola.com").getId();
+        long videoId = createVideo(uploader);
+
+        mockMvc.perform(get("/api/recommendations/videos")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1));
+
+        Integer impressionCount = jdbcTemplate.queryForObject("""
+                SELECT impression_count
+                FROM user_video_interactions
+                WHERE user_id = ? AND video_id = ?
+                """, Integer.class, viewerId, videoId);
+
+        assertThat(impressionCount).isEqualTo(1);
     }
 
     @Test
@@ -369,21 +430,23 @@ class RecommendationIntegrationTest {
 
     // ===== helpers =====
 
-    private void createVideo(String token) throws Exception {
-        createVideoAtGym(token, 1L, 1002L, "feed clip");
+    private long createVideo(String token) throws Exception {
+        return createVideoAtGym(token, 1L, 1002L, "feed clip");
     }
 
-    private void createVideoAtGym(String token, Long gymId, Long gymGradeId, String title) throws Exception {
+    private long createVideoAtGym(String token, Long gymId, Long gymGradeId, String title) throws Exception {
         long userId = dataOf(mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())).path("userId").asLong();
         String path = "videos/uploads/" + userId + "/test-" + java.util.UUID.randomUUID() + ".mp4";
         var request = new CreateVideoRequest(gymId, title, "desc", gymGradeId,
                 path, null, 30, java.time.LocalDate.of(2026, 6, 3), true);
-        mockMvc.perform(post("/api/videos")
+        return dataOf(mockMvc.perform(post("/api/videos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated()))
+                .path("id")
+                .asLong();
     }
 
     private void setUserEmbedding(String email, int hotDimension) {

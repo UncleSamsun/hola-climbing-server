@@ -24,6 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.mock.web.MockMultipartFile;
@@ -73,6 +74,9 @@ class VideoIntegrationTest {
 
     @Autowired
     private VideoMapper videoMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private AnalysisStatusStore analysisStatusStore;
@@ -506,6 +510,26 @@ class VideoIntegrationTest {
                 .andExpect(jsonPath("$.data.viewCount").value(1));
         mockMvc.perform(get("/api/videos/" + videoId))
                 .andExpect(jsonPath("$.data.viewCount").value(2));
+    }
+
+    @Test
+    @DisplayName("영상 상세 — 인증 사용자가 조회하면 추천용 조회 이력을 기록한다")
+    void getVideoDetail_recordsViewerInteraction() throws Exception {
+        String owner = register("a@hola.com", "climberone");
+        String viewer = register("b@hola.com", "climbertwo");
+        long videoId = createVideo(owner, true);
+        long viewerId = userMapper.findByEmail("b@hola.com").getId();
+
+        mockMvc.perform(get("/api/videos/" + videoId).header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isOk());
+
+        Integer viewedCount = jdbcTemplate.queryForObject("""
+                SELECT viewed_count
+                FROM user_video_interactions
+                WHERE user_id = ? AND video_id = ?
+                """, Integer.class, viewerId, videoId);
+
+        org.assertj.core.api.Assertions.assertThat(viewedCount).isEqualTo(1);
     }
 
     @Test

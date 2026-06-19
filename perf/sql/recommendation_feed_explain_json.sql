@@ -41,9 +41,19 @@ feed AS (
            v.created_at, v.updated_at, v.deleted_at,
            CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS following_rank,
            CASE
+               WHEN uvi.last_viewed_at IS NOT NULL THEN 2
+               WHEN uvi.last_impressed_at IS NOT NULL THEN 1
+               ELSE 0
+           END AS seen_penalty_rank,
+           CASE
                WHEN viewer.style_embedding IS NOT NULL AND g.style_embedding IS NOT NULL
                THEN (viewer.style_embedding <=> g.style_embedding)
                     - CASE WHEN f.id IS NOT NULL THEN 0.25 ELSE 0 END
+                    + CASE
+                        WHEN uvi.last_viewed_at IS NOT NULL THEN 1.0
+                        WHEN uvi.last_impressed_at IS NOT NULL THEN 0.5
+                        ELSE 0
+                      END
                ELSE NULL
            END AS ranking_distance
     FROM candidate_videos v
@@ -51,6 +61,7 @@ feed AS (
     JOIN gym_grades gg ON gg.id = v.gym_grade_id AND gg.gym_id = v.gym_id
     CROSS JOIN viewer
     LEFT JOIN follows f ON f.following_id = v.user_id AND f.follower_id = :viewer_id
+    LEFT JOIN user_video_interactions uvi ON uvi.video_id = v.id AND uvi.user_id = :viewer_id
 ),
 ranked AS (
     SELECT *,
@@ -66,6 +77,6 @@ SELECT id, user_id, gym_id, gym_grade_id,
        distance_null_rank, ranking_distance, following_rank,
        created_at, updated_at, deleted_at
 FROM ranked
-ORDER BY distance_null_rank ASC, ranking_distance ASC,
+ORDER BY distance_null_rank ASC, ranking_distance ASC, seen_penalty_rank ASC,
          following_rank DESC, created_at DESC, id DESC
-LIMIT :page_size;
+LIMIT :snapshot_size;

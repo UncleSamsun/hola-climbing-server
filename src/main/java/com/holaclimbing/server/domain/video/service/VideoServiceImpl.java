@@ -11,6 +11,7 @@ import com.holaclimbing.server.domain.gym.domain.GymGrade;
 import com.holaclimbing.server.domain.gym.mapper.GymGradeMapper;
 import com.holaclimbing.server.domain.gym.mapper.GymMapper;
 import com.holaclimbing.server.domain.notification.service.NotificationService;
+import com.holaclimbing.server.domain.recommendation.mapper.RecommendationInteractionMapper;
 import com.holaclimbing.server.domain.video.VideoUploadProperties;
 import com.holaclimbing.server.domain.video.domain.Video;
 import com.holaclimbing.server.domain.video.dto.request.CreateVideoRequest;
@@ -60,6 +61,7 @@ public class VideoServiceImpl implements VideoService {
     private final AnalysisDispatcher analysisDispatcher;
     private final AnalysisStatusStore analysisStatusStore;
     private final VideoAccessPolicy videoAccessPolicy;
+    private final RecommendationInteractionMapper recommendationInteractionMapper;
 
     @Value("${app.frontend-base-url}")
     private String frontendBaseUrl;
@@ -166,6 +168,9 @@ public class VideoServiceImpl implements VideoService {
         // 의도적으로 비-트랜잭션. view counter는 eventual하게 증가해도 무방하고,
         // 단일 read에 UPDATE를 묶어 PK 락 보유 시간을 늘리지 않는다.
         videoMapper.incrementViewCount(videoId);
+        if (viewerId != null) {
+            recommendationInteractionMapper.upsertView(viewerId, videoId);
+        }
         boolean isLiked = viewerId != null && likeMapper.exists(viewerId, videoId);
         return toDetail(videoMapper.findById(videoId), isLiked);
     }
