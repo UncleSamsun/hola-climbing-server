@@ -172,6 +172,38 @@ class TermsIntegrationTest {
     }
 
     @Test
+    @DisplayName("약관 동의 여부 조회 — 인증 사용자는 활성 약관별 동의 상태를 볼 수 있다")
+    void getAgreementStatus_returnsUserAgreementStatus() throws Exception {
+        String token = register("a@hola.com", "climberone");
+
+        mockMvc.perform(get("/api/terms/agreement-status")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.allRequiredAgreed").value(true))
+                .andExpect(jsonPath("$.data.terms.length()").value(4))
+                .andExpect(jsonPath("$.data.terms[0].termId").value(TERM_LOCATION))
+                .andExpect(jsonPath("$.data.terms[0].type").value("location"))
+                .andExpect(jsonPath("$.data.terms[0].required").value(false))
+                .andExpect(jsonPath("$.data.terms[0].agreed").value(false))
+                .andExpect(jsonPath("$.data.terms[0].agreedAt").exists())
+                .andExpect(jsonPath("$.data.terms[1].termId").value(TERM_MARKETING))
+                .andExpect(jsonPath("$.data.terms[1].type").value("marketing"))
+                .andExpect(jsonPath("$.data.terms[1].required").value(false))
+                .andExpect(jsonPath("$.data.terms[1].agreed").value(false))
+                .andExpect(jsonPath("$.data.terms[1].agreedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.terms[2].termId").value(TERM_PRIVACY))
+                .andExpect(jsonPath("$.data.terms[2].type").value("privacy"))
+                .andExpect(jsonPath("$.data.terms[2].required").value(true))
+                .andExpect(jsonPath("$.data.terms[2].agreed").value(true))
+                .andExpect(jsonPath("$.data.terms[2].agreedAt").exists())
+                .andExpect(jsonPath("$.data.terms[3].termId").value(TERM_SERVICE))
+                .andExpect(jsonPath("$.data.terms[3].type").value("service"))
+                .andExpect(jsonPath("$.data.terms[3].required").value(true))
+                .andExpect(jsonPath("$.data.terms[3].agreed").value(true))
+                .andExpect(jsonPath("$.data.terms[3].agreedAt").exists());
+    }
+
+    @Test
     @DisplayName("약관 동의 실패 — 토큰 없이 호출하면 401")
     void agree_withoutToken_returns401() throws Exception {
         var request = new AgreeTermsRequest(List.of(new TermAgreementRequest(TERM_MARKETING, true)));

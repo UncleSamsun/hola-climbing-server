@@ -101,6 +101,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/reports").authenticated()
                         // 약관 — 조회는 공개, 동의 기록은 인증 필요
                         .requestMatchers(HttpMethod.GET, "/api/terms").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/terms/agreement-status").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/terms/agree").authenticated()
                         // 채팅 REST — 본인 전용
                         .requestMatchers("/api/chats/**").authenticated()

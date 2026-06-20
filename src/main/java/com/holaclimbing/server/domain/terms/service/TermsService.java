@@ -1,6 +1,7 @@
 package com.holaclimbing.server.domain.terms.service;
 
 import com.holaclimbing.server.domain.terms.dto.request.TermAgreementRequest;
+import com.holaclimbing.server.domain.terms.dto.response.TermsAgreementStatusResponse;
 import com.holaclimbing.server.domain.terms.dto.response.TermResponse;
 
 import java.util.List;
@@ -12,6 +13,9 @@ public interface TermsService {
 
     /** 약관 동의 기록. 유효하지 않은 termId는 거부한다. */
     void agree(Long userId, List<TermAgreementRequest> agreements);
+
+    /** 인증 사용자의 활성 약관별 동의 상태. */
+    TermsAgreementStatusResponse getAgreementStatus(Long userId);
 
     /** 필수 약관이 모두 동의됐는지 검증 (회원가입 시). 미동의 시 예외. */
     void validateRequiredAgreed(List<TermAgreementRequest> agreements);

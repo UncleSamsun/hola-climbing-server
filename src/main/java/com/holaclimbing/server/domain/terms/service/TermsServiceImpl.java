@@ -2,9 +2,12 @@ package com.holaclimbing.server.domain.terms.service;
 
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
+import com.holaclimbing.server.domain.terms.domain.TermAgreementStatus;
 import com.holaclimbing.server.domain.terms.domain.TermVersion;
 import com.holaclimbing.server.domain.terms.dto.request.TermAgreementRequest;
+import com.holaclimbing.server.domain.terms.dto.response.TermAgreementStatusItemResponse;
 import com.holaclimbing.server.domain.terms.dto.response.TermResponse;
+import com.holaclimbing.server.domain.terms.dto.response.TermsAgreementStatusResponse;
 import com.holaclimbing.server.domain.terms.mapper.TermsMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,6 +46,24 @@ public class TermsServiceImpl implements TermsService {
             }
             termsMapper.upsertAgreement(userId, a.termId(), Boolean.TRUE.equals(a.agreed()));
         }
+    }
+
+    @Override
+    public TermsAgreementStatusResponse getAgreementStatus(Long userId) {
+        List<TermAgreementStatus> statuses = termsMapper.findAgreementStatuses(userId);
+        boolean hasRequiredTerm = statuses.stream()
+                .anyMatch(status -> Boolean.TRUE.equals(status.getRequired()));
+        if (statuses.isEmpty() || !hasRequiredTerm) {
+            throw new BusinessException(ErrorCode.TERMS_NOT_CONFIGURED);
+        }
+
+        boolean allRequiredAgreed = statuses.stream()
+                .filter(status -> Boolean.TRUE.equals(status.getRequired()))
+                .allMatch(status -> Boolean.TRUE.equals(status.getAgreed()));
+        List<TermAgreementStatusItemResponse> terms = statuses.stream()
+                .map(TermAgreementStatusItemResponse::of)
+                .toList();
+        return new TermsAgreementStatusResponse(allRequiredAgreed, terms);
     }
 
     @Override

@@ -6,6 +6,7 @@ import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.domain.terms.dto.request.AgreeTermsRequest;
 import com.holaclimbing.server.domain.terms.dto.response.TermResponse;
+import com.holaclimbing.server.domain.terms.dto.response.TermsAgreementStatusResponse;
 import com.holaclimbing.server.domain.terms.service.TermsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,12 @@ public class TermsController {
     @GetMapping
     public ApiResponse<List<TermResponse>> getActiveTerms() {
         return ApiResponse.success(termsService.getActiveTerms());
+    }
+
+    @ApiErrorCodes({TERMS_NOT_CONFIGURED})
+    @GetMapping("/agreement-status")
+    public ApiResponse<TermsAgreementStatusResponse> getAgreementStatus(@AuthenticationPrincipal Long userId) {
+        return ApiResponse.success(termsService.getAgreementStatus(userId));
     }
 
     @ApiErrorCodes({INVALID_INPUT, TERMS_NOT_CONFIGURED})

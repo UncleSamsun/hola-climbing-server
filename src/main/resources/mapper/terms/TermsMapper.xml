@@ -9,6 +9,32 @@
         ORDER BY type, effective_at DESC, version DESC
     </select>
 
+    <select id="findAgreementStatuses" resultType="com.holaclimbing.server.domain.terms.domain.TermAgreementStatus">
+        WITH active_terms AS (
+            SELECT DISTINCT ON (type)
+                   id AS term_id,
+                   type,
+                   version,
+                   title,
+                   is_required AS required
+            FROM terms_versions
+            WHERE effective_at &lt;= NOW()
+            ORDER BY type, effective_at DESC, version DESC
+        )
+        SELECT active_terms.term_id,
+               active_terms.type,
+               active_terms.version,
+               active_terms.title,
+               active_terms.required,
+               COALESCE(user_term_agreements.agreed, FALSE) AS agreed,
+               user_term_agreements.agreed_at
+        FROM active_terms
+        LEFT JOIN user_term_agreements
+               ON user_term_agreements.term_version_id = active_terms.term_id
+              AND user_term_agreements.user_id = #{userId}
+        ORDER BY active_terms.type
+    </select>
+
     <insert id="upsertAgreement">
         INSERT INTO user_term_agreements (user_id, term_version_id, agreed)
         VALUES (#{userId}, #{termId}, #{agreed})
