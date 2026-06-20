@@ -517,6 +517,20 @@ class VideoIntegrationTest {
     }
 
     @Test
+    @DisplayName("영상 상세 — 소유자가 자기 영상을 조회해도 조회수가 증가하지 않는다")
+    void getVideoDetail_byOwnerDoesNotIncrementViewCount() throws Exception {
+        String owner = register("owner@hola.com", "ownerclimber");
+        long videoId = createVideo(owner, true);
+
+        mockMvc.perform(get("/api/videos/" + videoId).header("Authorization", "Bearer " + owner))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.viewCount").value(0));
+        mockMvc.perform(get("/api/videos/" + videoId).header("Authorization", "Bearer " + owner))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.viewCount").value(0));
+    }
+
+    @Test
     @DisplayName("영상 상세 — 인증 사용자가 조회하면 추천용 조회 이력을 기록한다")
     void getVideoDetail_recordsViewerInteraction() throws Exception {
         String owner = register("a@hola.com", "climberone");

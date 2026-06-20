@@ -167,7 +167,9 @@ public class VideoServiceImpl implements VideoService {
         videoAccessPolicy.requireViewable(video, viewerId);
         // 의도적으로 비-트랜잭션. view counter는 eventual하게 증가해도 무방하고,
         // 단일 read에 UPDATE를 묶어 PK 락 보유 시간을 늘리지 않는다.
-        videoMapper.incrementViewCount(videoId);
+        if (!video.getUserId().equals(viewerId)) {
+            videoMapper.incrementViewCount(videoId);
+        }
         if (viewerId != null) {
             recommendationInteractionMapper.upsertView(viewerId, videoId);
         }
