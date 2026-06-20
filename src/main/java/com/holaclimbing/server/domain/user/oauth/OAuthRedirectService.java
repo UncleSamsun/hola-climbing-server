@@ -43,11 +43,12 @@ public class OAuthRedirectService {
             throw new BusinessException(ErrorCode.OAUTH_AUTHORIZATION_FAILED);
         }
 
-        String state = stateStore.issue(OAuthState.of(provider, frontendRedirectUri));
+        String backendRedirectUri = backendCallbackUri(provider);
+        String state = stateStore.issue(OAuthState.of(provider, frontendRedirectUri, backendRedirectUri));
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(providerProperties.authorizationUri())
                 .queryParam("response_type", "code")
                 .queryParam("client_id", providerProperties.clientId())
-                .queryParam("redirect_uri", backendCallbackUri(provider))
+                .queryParam("redirect_uri", backendRedirectUri)
                 .queryParam("state", state);
         String scope = providerProperties.scopeValue();
         if (!isBlank(scope)) {
@@ -71,8 +72,11 @@ public class OAuthRedirectService {
             throw new BusinessException(ErrorCode.OAUTH_AUTHORIZATION_FAILED);
         }
 
+        String backendRedirectUri = isBlank(state.backendRedirectUri())
+                ? backendCallbackUri(provider)
+                : state.backendRedirectUri();
         OAuthUserProfile profile = clientResolver.resolve(provider)
-                .fetchProfile(new OAuthAuthorizationCodeRequest(provider, providerCode, backendCallbackUri(provider)));
+                .fetchProfile(new OAuthAuthorizationCodeRequest(provider, providerCode, backendRedirectUri));
         OAuthLoginResponse response = resolveLoginResponse(profile);
         String oauthCode = resultStore.issue(response);
         return UriComponentsBuilder.fromUriString(state.redirectUri())
