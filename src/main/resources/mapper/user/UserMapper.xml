@@ -14,6 +14,18 @@
         VALUES (#{email}, #{passwordHash}, #{emailVerified}, #{emailVerificationToken}, #{nickname})
     </insert>
 
+    <insert id="insertOAuth" parameterType="com.holaclimbing.server.domain.user.domain.User"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (
+            email, password_hash, email_verified, email_verification_token,
+            provider, provider_id, nickname, profile_image, bio
+        )
+        VALUES (
+            #{email}, NULL, #{emailVerified}, NULL,
+            #{provider}, #{providerId}, #{nickname}, #{profileImage}, #{bio}
+        )
+    </insert>
+
     <select id="findById" resultType="com.holaclimbing.server.domain.user.domain.User">
         SELECT <include refid="columns"/>
         FROM users
@@ -24,6 +36,14 @@
         SELECT <include refid="columns"/>
         FROM users
         WHERE email = #{email} AND deleted_at IS NULL
+    </select>
+
+    <select id="findByProvider" resultType="com.holaclimbing.server.domain.user.domain.User">
+        SELECT <include refid="columns"/>
+        FROM users
+        WHERE provider = #{provider}
+          AND provider_id = #{providerId}
+          AND deleted_at IS NULL
     </select>
 
     <select id="searchAdminUsers" resultType="com.holaclimbing.server.domain.user.domain.User">

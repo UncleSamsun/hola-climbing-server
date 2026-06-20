@@ -12,11 +12,17 @@ public interface UserMapper {
     /** 신규 회원 저장. 생성된 PK는 user.id로 채워진다. */
     void insert(User user);
 
+    /** 소셜 로그인 회원 저장. 생성된 PK는 user.id로 채워진다. */
+    void insertOAuth(User user);
+
     /** 활성 회원 단건 조회 (soft-delete 제외). 없으면 null. */
     User findById(Long id);
 
     /** 로그인용 이메일 조회 (soft-delete 제외). 없으면 null. */
     User findByEmail(String email);
+
+    /** 소셜 provider identity 조회 (soft-delete 제외). 없으면 null. */
+    User findByProvider(@Param("provider") String provider, @Param("providerId") String providerId);
 
     /** 운영자 회원 목록 검색. */
     List<User> searchAdminUsers(@Param("status") String status,

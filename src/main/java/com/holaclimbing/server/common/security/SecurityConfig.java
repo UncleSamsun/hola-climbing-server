@@ -1,5 +1,6 @@
 package com.holaclimbing.server.common.security;
 
+import com.holaclimbing.server.domain.user.oauth.OAuthProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -34,7 +35,7 @@ import java.util.List;
  */
 @Configuration
 @RequiredArgsConstructor
-@EnableConfigurationProperties({JwtProperties.class, AiCallbackProperties.class, MetricsTokenProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, AiCallbackProperties.class, MetricsTokenProperties.class, OAuthProperties.class})
 public class SecurityConfig {
 
     /** BCrypt 워크 팩터. 메모리: strength=12 */

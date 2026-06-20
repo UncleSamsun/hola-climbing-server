@@ -26,6 +26,12 @@ public enum ErrorCode {
     INVALID_RESET_TOKEN(HttpStatus.BAD_REQUEST, "U011", "유효하지 않거나 만료된 토큰입니다."),
     USER_SUSPENDED(HttpStatus.FORBIDDEN, "U012", "정지된 계정입니다."),
     TERMS_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "U013", "활성 약관 정보가 없습니다. 관리자에게 문의해 주세요."),
+    UNSUPPORTED_OAUTH_PROVIDER(HttpStatus.BAD_REQUEST, "U014", "지원하지 않는 소셜 로그인 제공자입니다."),
+    OAUTH_AUTHORIZATION_FAILED(HttpStatus.UNAUTHORIZED, "U015", "소셜 로그인 인증에 실패했습니다."),
+    INVALID_OAUTH_SIGNUP_TOKEN(HttpStatus.BAD_REQUEST, "U016", "소셜 회원가입 토큰이 유효하지 않거나 만료되었습니다."),
+    OAUTH_EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "U017", "해당 이메일로 가입된 계정이 이미 있습니다."),
+    INVALID_OAUTH_STATE(HttpStatus.UNAUTHORIZED, "U018", "소셜 로그인 요청 상태가 유효하지 않거나 만료되었습니다."),
+    INVALID_OAUTH_RESULT_CODE(HttpStatus.BAD_REQUEST, "U019", "소셜 로그인 결과 코드가 유효하지 않거나 만료되었습니다."),
 
     // ===== 비디오 F-02 (V) =====
     VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "V001", "영상을 찾을 수 없습니다."),

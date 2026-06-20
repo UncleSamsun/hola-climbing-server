@@ -43,6 +43,7 @@ public class UserServiceImpl implements UserService {
     private final UserTokenRevoker userTokenRevoker;
     private final EmailVerificationTokenStore emailVerificationTokenStore;
     private final TermsService termsService;
+    private final AuthTokenIssuer authTokenIssuer;
 
     @Override
     @Transactional
@@ -208,9 +209,7 @@ public class UserServiceImpl implements UserService {
     }
 
     private TokenResponse issueTokens(User user) {
-        String accessToken = tokenProvider.createAccessToken(user.getId(), user.getEmail(), user.getRole());
-        String refreshToken = tokenProvider.createRefreshToken(user.getId());
-        return TokenResponse.of(accessToken, refreshToken);
+        return authTokenIssuer.issue(user);
     }
 
     private void requireActive(User user) {
