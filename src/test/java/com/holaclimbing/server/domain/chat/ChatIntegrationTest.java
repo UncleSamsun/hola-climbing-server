@@ -159,8 +159,8 @@ class ChatIntegrationTest {
                         new StompSessionHandlerAdapter() {})
                 .get(5, TimeUnit.SECONDS);
 
-        // 브로드캐스트 payload는 raw 바이트로 받아 앱 ObjectMapper(snake_case)로 파싱한다.
-        BlockingQueue<ChatMessageResponse> received = new LinkedBlockingQueue<>();
+        // 브로드캐스트 payload는 raw 바이트로 받아 앱 ObjectMapper로 파싱한다.
+        BlockingQueue<JsonNode> received = new LinkedBlockingQueue<>();
         session.subscribe("/topic/gyms/1/chat", new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
@@ -170,7 +170,7 @@ class ChatIntegrationTest {
             @Override
             public void handleFrame(StompHeaders headers, Object payload) {
                 try {
-                    received.add(objectMapper.readValue((byte[]) payload, ChatMessageResponse.class));
+                    received.add(objectMapper.readTree((byte[]) payload));
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -185,16 +185,18 @@ class ChatIntegrationTest {
         session.send(sendHeaders,
                 objectMapper.writeValueAsBytes(new SendMessageRequest("first send!", GYM1_LAT, GYM1_LNG)));
 
-        ChatMessageResponse delivered = received.poll(5, TimeUnit.SECONDS);
+        JsonNode delivered = received.poll(5, TimeUnit.SECONDS);
         assertThat(delivered).isNotNull();
-        assertThat(delivered.content()).isEqualTo("first send!");
-        assertThat(delivered.verifiedAtGym()).isTrue();
+        assertThat(delivered.path("content").asText()).isEqualTo("first send!");
+        assertThat(delivered.path("nickname").asText()).isEqualTo("climberone");
+        assertThat(delivered.path("verifiedAtGym").asBoolean()).isTrue();
 
         mockMvc.perform(get("/api/chats/gyms/1/messages")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].content").value("first send!"))
+                .andExpect(jsonPath("$.data.content[0].nickname").value("climberone"))
                 .andExpect(jsonPath("$.data.content[0].verifiedAtGym").value(true));
 
         session.disconnect();

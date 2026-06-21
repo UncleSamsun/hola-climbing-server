@@ -9,9 +9,11 @@
     </insert>
 
     <select id="findById" resultType="com.holaclimbing.server.domain.gym.domain.GymReview">
-        SELECT id, gym_id, user_id, rating, content, created_at, updated_at
-        FROM gym_reviews
-        WHERE id = #{id}
+        SELECT r.id, r.gym_id, r.user_id, u.nickname, u.profile_image,
+               r.rating, r.content, r.created_at, r.updated_at
+        FROM gym_reviews r
+        JOIN users u ON u.id = r.user_id
+        WHERE r.id = #{id}
     </select>
 
     <select id="existsByGymAndUser" resultType="boolean">
@@ -21,10 +23,12 @@
     </select>
 
     <select id="findByGymId" resultType="com.holaclimbing.server.domain.gym.domain.GymReview">
-        SELECT id, gym_id, user_id, rating, content, created_at, updated_at
-        FROM gym_reviews
-        WHERE gym_id = #{gymId}
-        ORDER BY created_at DESC, id DESC
+        SELECT r.id, r.gym_id, r.user_id, u.nickname, u.profile_image,
+               r.rating, r.content, r.created_at, r.updated_at
+        FROM gym_reviews r
+        JOIN users u ON u.id = r.user_id
+        WHERE r.gym_id = #{gymId}
+        ORDER BY r.created_at DESC, r.id DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
 

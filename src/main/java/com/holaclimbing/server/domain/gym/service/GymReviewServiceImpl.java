@@ -9,6 +9,7 @@ import com.holaclimbing.server.domain.gym.dto.request.UpdateReviewRequest;
 import com.holaclimbing.server.domain.gym.dto.response.GymReviewResponse;
 import com.holaclimbing.server.domain.gym.mapper.GymMapper;
 import com.holaclimbing.server.domain.gym.mapper.GymReviewMapper;
+import com.holaclimbing.server.infrastructure.gcs.GcsStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class GymReviewServiceImpl implements GymReviewService {
 
     private final GymReviewMapper reviewMapper;
     private final GymMapper gymMapper;
+    private final GcsStorageService gcsStorageService;
 
     @Override
     @Transactional
@@ -39,14 +41,14 @@ public class GymReviewServiceImpl implements GymReviewService {
                 .build();
         reviewMapper.insert(review);
         reviewMapper.recalcGymRating(gymId);
-        return GymReviewResponse.of(reviewMapper.findById(review.getId()));
+        return toResponse(reviewMapper.findById(review.getId()));
     }
 
     @Override
     public PageResponse<GymReviewResponse> getReviews(Long gymId, int page, int size) {
         long total = reviewMapper.countByGymId(gymId);
         List<GymReviewResponse> content = reviewMapper.findByGymId(gymId, size, page * size)
-                .stream().map(GymReviewResponse::of).toList();
+                .stream().map(this::toResponse).toList();
         return PageResponse.of(content, page, size, total);
     }
 
@@ -56,7 +58,7 @@ public class GymReviewServiceImpl implements GymReviewService {
         GymReview review = findOwnedReview(userId, reviewId);
         reviewMapper.update(reviewId, request.rating(), request.content());
         reviewMapper.recalcGymRating(review.getGymId());
-        return GymReviewResponse.of(reviewMapper.findById(reviewId));
+        return toResponse(reviewMapper.findById(reviewId));
     }
 
     @Override
@@ -76,5 +78,19 @@ public class GymReviewServiceImpl implements GymReviewService {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
         return review;
+    }
+
+    private GymReviewResponse toResponse(GymReview review) {
+        return GymReviewResponse.of(review, resolveProfileImage(review.getProfileImage()));
+    }
+
+    private String resolveProfileImage(String storedProfileImage) {
+        if (storedProfileImage == null || storedProfileImage.isBlank()) {
+            return null;
+        }
+        if (storedProfileImage.startsWith("http://") || storedProfileImage.startsWith("https://")) {
+            return storedProfileImage;
+        }
+        return gcsStorageService.createReadUrl(storedProfileImage);
     }
 }

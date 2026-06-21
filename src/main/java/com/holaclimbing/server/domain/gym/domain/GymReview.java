@@ -19,6 +19,8 @@ public class GymReview {
     private Long id;
     private Long gymId;
     private Long userId;
+    private String nickname;
+    private String profileImage;
     private Integer rating;
     private String content;
     private OffsetDateTime createdAt;

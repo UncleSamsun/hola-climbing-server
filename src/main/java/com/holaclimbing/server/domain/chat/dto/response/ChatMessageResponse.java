@@ -8,6 +8,7 @@ public record ChatMessageResponse(
         Long id,
         Long roomId,
         Long userId,
+        String nickname,
         String content,
         boolean verifiedAtGym,
         OffsetDateTime createdAt
@@ -15,6 +16,6 @@ public record ChatMessageResponse(
     public static ChatMessageResponse of(ChatMessage message) {
         return new ChatMessageResponse(
                 message.getId(), message.getRoomId(), message.getUserId(),
-                message.getContent(), message.isVerifiedAtGym(), message.getCreatedAt());
+                message.getNickname(), message.getContent(), message.isVerifiedAtGym(), message.getCreatedAt());
     }
 }

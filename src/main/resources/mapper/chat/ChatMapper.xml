@@ -46,16 +46,18 @@
     </insert>
 
     <select id="findMessageById" resultType="com.holaclimbing.server.domain.chat.domain.ChatMessage">
-        SELECT id, room_id, user_id, content, verified_at_gym, created_at, deleted_at
-        FROM chat_messages
-        WHERE id = #{id}
+        SELECT m.id, m.room_id, m.user_id, u.nickname, m.content, m.verified_at_gym, m.created_at, m.deleted_at
+        FROM chat_messages m
+        JOIN users u ON u.id = m.user_id
+        WHERE m.id = #{id}
     </select>
 
     <select id="findMessages" resultType="com.holaclimbing.server.domain.chat.domain.ChatMessage">
-        SELECT id, room_id, user_id, content, verified_at_gym, created_at, deleted_at
-        FROM chat_messages
-        WHERE room_id = #{roomId} AND deleted_at IS NULL
-        ORDER BY created_at DESC, id DESC
+        SELECT m.id, m.room_id, m.user_id, u.nickname, m.content, m.verified_at_gym, m.created_at, m.deleted_at
+        FROM chat_messages m
+        JOIN users u ON u.id = m.user_id
+        WHERE m.room_id = #{roomId} AND m.deleted_at IS NULL
+        ORDER BY m.created_at DESC, m.id DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
 

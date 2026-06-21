@@ -19,6 +19,7 @@ public class ChatMessage {
     private Long id;
     private Long roomId;
     private Long userId;
+    private String nickname;
     private String content;
     private boolean verifiedAtGym;
     private OffsetDateTime createdAt;

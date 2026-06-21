@@ -17,6 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
@@ -57,6 +58,9 @@ class GymReviewIntegrationTest {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     @DisplayName("리뷰 작성 — 201, 평점과 내용이 저장된다")
@@ -121,7 +125,31 @@ class GymReviewIntegrationTest {
         mockMvc.perform(get("/api/gyms/1/reviews"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(1))
-                .andExpect(jsonPath("$.data.content[0].rating").value(3));
+                .andExpect(jsonPath("$.data.content[0].rating").value(3))
+                .andExpect(jsonPath("$.data.content[0].nickname").value("climberone"));
+    }
+
+    @Test
+    @DisplayName("리뷰 목록 — 작성자 닉네임과 프로필 이미지를 함께 반환한다")
+    void getReviews_includesAuthorProfile() throws Exception {
+        String token = register("profile-review@hola.com", "profilereviewer");
+        long userId = userMapper.findByEmail("profile-review@hola.com").getId();
+        jdbcTemplate.update("UPDATE users SET profile_image = ? WHERE id = ?",
+                "profile-images/" + userId + "/review.jpg", userId);
+        mockMvc.perform(post("/api/gyms/1/reviews").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateReviewRequest(4, "프로필 리뷰"))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/gyms/1/reviews"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].content").value("프로필 리뷰"))
+                .andExpect(jsonPath("$.data.content[0].nickname").value("profilereviewer"))
+                .andExpect(jsonPath("$.data.content[0].profileImage").isString())
+                .andExpect(jsonPath("$.data.content[0].profileImage").value(org.hamcrest.Matchers.containsString(
+                        "profile-images/" + userId + "/review.jpg")))
+                .andExpect(jsonPath("$.data.content[0].profileImage").value(org.hamcrest.Matchers.containsString(
+                        "X-Goog-Signature=")));
     }
 
     @Test
