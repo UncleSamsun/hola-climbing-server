@@ -9,6 +9,8 @@ import java.time.OffsetDateTime;
 public record VideoSummaryResponse(
         Long id,
         Long userId,
+        String nickname,
+        String profileImage,
         Long gymId,
         String gymName,
         GymGradeResponse gymGrade,
@@ -30,8 +32,13 @@ public record VideoSummaryResponse(
     }
 
     public static VideoSummaryResponse from(Video video, String streamUrl, String thumbnailUrl) {
+        return from(video, streamUrl, thumbnailUrl, video.getProfileImage());
+    }
+
+    public static VideoSummaryResponse from(Video video, String streamUrl, String thumbnailUrl, String profileImage) {
         return new VideoSummaryResponse(
-                video.getId(), video.getUserId(), video.getGymId(), video.getGymName(), gymGradeOf(video), video.getTitle(),
+                video.getId(), video.getUserId(), video.getNickname(), profileImage,
+                video.getGymId(), video.getGymName(), gymGradeOf(video), video.getTitle(),
                 video.getThumbnailPath(), thumbnailUrl, streamUrl, video.getDurationSeconds(), video.getRecordedDate(),
                 video.getStatus(), video.getViewCount(), video.getLikeCount(), video.getCommentCount(), video.getCreatedAt());
     }

@@ -386,6 +386,9 @@ class VideoIntegrationTest {
     @DisplayName("피드 — 공개 영상만 노출되고 비공개는 제외된다 (커서)")
     void getFeed_returnsPublicOnly() throws Exception {
         String token = register("a@hola.com", "climberone");
+        long userId = userMapper.findByEmail("a@hola.com").getId();
+        jdbcTemplate.update("UPDATE users SET profile_image = ? WHERE id = ?",
+                "profile-images/" + userId + "/feed.jpg", userId);
         createVideo(token, true);
         createVideo(token, true);
         createVideo(token, false);
@@ -393,6 +396,12 @@ class VideoIntegrationTest {
         mockMvc.perform(get("/api/videos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.content[0].nickname").value("climberone"))
+                .andExpect(jsonPath("$.data.content[0].profileImage").isString())
+                .andExpect(jsonPath("$.data.content[0].profileImage").value(org.hamcrest.Matchers.containsString(
+                        "profile-images/" + userId + "/feed.jpg")))
+                .andExpect(jsonPath("$.data.content[0].profileImage").value(org.hamcrest.Matchers.containsString(
+                        "X-Goog-Signature=")))
                 .andExpect(jsonPath("$.data.content[0].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1003))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("빨강"))

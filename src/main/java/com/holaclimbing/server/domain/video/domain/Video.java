@@ -19,6 +19,8 @@ public class Video {
 
     private Long id;
     private Long userId;
+    private String nickname;
+    private String profileImage;
     private Long gymId;
     private String gymName;
     private Long gymGradeId;

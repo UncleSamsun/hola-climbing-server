@@ -22,6 +22,15 @@ class VideoResponseTest {
     }
 
     @Test
+    @DisplayName("영상 요약 응답에 작성자 닉네임과 프로필 이미지를 포함한다")
+    void summaryResponse_includesAuthorProfile() {
+        VideoSummaryResponse response = VideoSummaryResponse.from(video(), "https://cdn.example/video.mp4");
+
+        assertThat(response.nickname()).isEqualTo("climberone");
+        assertThat(response.profileImage()).isEqualTo("profile-images/2/seed.jpg");
+    }
+
+    @Test
     @DisplayName("영상 상세 응답에 암장 이름을 포함한다")
     void detailResponse_includesGymName() {
         VideoDetailResponse response = VideoDetailResponse.of(video(), false, "https://cdn.example/video.mp4");
@@ -39,6 +48,16 @@ class VideoResponseTest {
     }
 
     @Test
+    @DisplayName("추천 영상 응답에 작성자 닉네임과 프로필 이미지를 포함한다")
+    void recommendedResponse_includesAuthorProfile() {
+        RecommendedVideoResponse response = RecommendedVideoResponse.of(
+                video(), "https://cdn.example/video.mp4", "recommended");
+
+        assertThat(response.nickname()).isEqualTo("climberone");
+        assertThat(response.profileImage()).isEqualTo("profile-images/2/seed.jpg");
+    }
+
+    @Test
     @DisplayName("영상 응답의 생성 시각은 timezone offset을 포함한다")
     void videoResponsesExposeOffsetDateTime() {
         VideoDetailResponse response = VideoDetailResponse.of(video(), false, "https://cdn.example/video.mp4");
@@ -50,6 +69,8 @@ class VideoResponseTest {
         return Video.builder()
                 .id(1L)
                 .userId(2L)
+                .nickname("climberone")
+                .profileImage("profile-images/2/seed.jpg")
                 .gymId(1L)
                 .gymName("TheClimb Gangnam")
                 .gymGradeId(1003L)

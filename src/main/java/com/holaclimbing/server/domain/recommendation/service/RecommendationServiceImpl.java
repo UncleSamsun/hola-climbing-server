@@ -142,6 +142,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .map(v -> RecommendedVideoResponse.of(v,
                         null,
                         gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath()),
+                        resolveProfileImage(v.getProfileImage()),
                         Integer.valueOf(1).equals(v.getFollowingRank()) ? SOURCE_FOLLOWING : SOURCE_RECOMMENDED))
                 .toList();
     }
@@ -164,6 +165,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .map(v -> RecommendedVideoResponse.of(v,
                         null,
                         gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath()),
+                        resolveProfileImage(v.getProfileImage()),
                         Integer.valueOf(1).equals(v.getFollowingRank()) ? SOURCE_FOLLOWING : SOURCE_RECOMMENDED))
                 .toList();
 
@@ -180,6 +182,16 @@ public class RecommendationServiceImpl implements RecommendationService {
         recommendationInteractionMapper.upsertImpressions(
                 userId,
                 pageVideos.stream().map(Video::getId).toList());
+    }
+
+    private String resolveProfileImage(String storedProfileImage) {
+        if (storedProfileImage == null || storedProfileImage.isBlank()) {
+            return null;
+        }
+        if (storedProfileImage.startsWith("http://") || storedProfileImage.startsWith("https://")) {
+            return storedProfileImage;
+        }
+        return gcsStorageService.createReadUrl(storedProfileImage);
     }
 
     @Override

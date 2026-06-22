@@ -143,7 +143,8 @@ public class VideoServiceImpl implements VideoService {
         List<VideoSummaryResponse> content = pageRows.stream()
                 .map(v -> VideoSummaryResponse.from(v,
                         gcsStorageService.createReadUrl(v.getGcsPath()),
-                        gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath())))
+                        gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath()),
+                        resolveProfileImage(v.getProfileImage())))
                 .toList();
         String nextCursor = hasNext ? CursorCodec.encode(pageRows.get(pageRows.size() - 1).getId()) : null;
         return CursorPageResponse.of(content, nextCursor, hasNext);
@@ -156,7 +157,8 @@ public class VideoServiceImpl implements VideoService {
                 .stream()
                 .map(v -> VideoSummaryResponse.from(v,
                         gcsStorageService.createReadUrl(v.getGcsPath()),
-                        gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath())))
+                        gcsStorageService.createPublicThumbnailUrl(v.getThumbnailPath()),
+                        resolveProfileImage(v.getProfileImage())))
                 .toList();
         return PageResponse.of(content, page, size, total);
     }
@@ -241,6 +243,16 @@ public class VideoServiceImpl implements VideoService {
         return VideoDetailResponse.of(video, isLiked,
                 gcsStorageService.createReadUrl(video.getGcsPath()),
                 gcsStorageService.createPublicThumbnailUrl(video.getThumbnailPath()));
+    }
+
+    private String resolveProfileImage(String storedProfileImage) {
+        if (storedProfileImage == null || storedProfileImage.isBlank()) {
+            return null;
+        }
+        if (storedProfileImage.startsWith("http://") || storedProfileImage.startsWith("https://")) {
+            return storedProfileImage;
+        }
+        return gcsStorageService.createReadUrl(storedProfileImage);
     }
 
     private String extractExtension(String fileName) {

@@ -12,6 +12,8 @@ import java.time.OffsetDateTime;
 public record RecommendedVideoResponse(
         Long id,
         Long userId,
+        String nickname,
+        String profileImage,
         Long gymId,
         String gymName,
         GymGradeResponse gymGrade,
@@ -33,8 +35,14 @@ public record RecommendedVideoResponse(
     }
 
     public static RecommendedVideoResponse of(Video video, String streamUrl, String thumbnailUrl, String source) {
+        return of(video, streamUrl, thumbnailUrl, video.getProfileImage(), source);
+    }
+
+    public static RecommendedVideoResponse of(Video video, String streamUrl, String thumbnailUrl,
+                                              String profileImage, String source) {
         return new RecommendedVideoResponse(
-                video.getId(), video.getUserId(), video.getGymId(), video.getGymName(), gymGradeOf(video), video.getTitle(),
+                video.getId(), video.getUserId(), video.getNickname(), profileImage,
+                video.getGymId(), video.getGymName(), gymGradeOf(video), video.getTitle(),
                 video.getThumbnailPath(), thumbnailUrl, streamUrl, video.getDurationSeconds(), video.getRecordedDate(),
                 video.getStatus(), video.getViewCount(), video.getLikeCount(), video.getCommentCount(), source, video.getCreatedAt());
     }

@@ -72,6 +72,8 @@ class RecommendationIntegrationTest {
         String followed = register("followed@hola.com", "followeduser");
         String stranger = register("stranger@hola.com", "stranger");
         long followedId = userMapper.findByEmail("followed@hola.com").getId();
+        jdbcTemplate.update("UPDATE users SET profile_image = ? WHERE id = ?",
+                "profile-images/" + followedId + "/feed.jpg", followedId);
 
         mockMvc.perform(post("/api/users/" + followedId + "/follow")
                 .header("Authorization", "Bearer " + viewer)).andExpect(status().isOk());
@@ -85,6 +87,12 @@ class RecommendationIntegrationTest {
                 .andExpect(jsonPath("$.data.hasNext").value(false))
                 .andExpect(jsonPath("$.data.totalElements").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].source").value("following"))
+                .andExpect(jsonPath("$.data.content[0].nickname").value("followeduser"))
+                .andExpect(jsonPath("$.data.content[0].profileImage").isString())
+                .andExpect(jsonPath("$.data.content[0].profileImage").value(org.hamcrest.Matchers.containsString(
+                        "profile-images/" + followedId + "/feed.jpg")))
+                .andExpect(jsonPath("$.data.content[0].profileImage").value(org.hamcrest.Matchers.containsString(
+                        "X-Goog-Signature=")))
                 .andExpect(jsonPath("$.data.content[0].gymName").value("TheClimb Gangnam"))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1002))
                 .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("파랑"))
@@ -265,6 +273,9 @@ class RecommendationIntegrationTest {
         String firstUploader = register("cursor-first@hola.com", "cursorfirst");
         String secondUploader = register("cursor-second@hola.com", "cursorsecond");
         String thirdUploader = register("cursor-third@hola.com", "cursorthird");
+        long firstUploaderId = userMapper.findByEmail("cursor-first@hola.com").getId();
+        jdbcTemplate.update("UPDATE users SET profile_image = ? WHERE id = ?",
+                "profile-images/" + firstUploaderId + "/cursor.jpg", firstUploaderId);
 
         createVideo(firstUploader);
         createVideo(secondUploader);
@@ -290,6 +301,12 @@ class RecommendationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content.length()").value(1))
                 .andExpect(jsonPath("$.data.content[0].title").value("feed clip"))
+                .andExpect(jsonPath("$.data.content[0].nickname").value("cursorfirst"))
+                .andExpect(jsonPath("$.data.content[0].profileImage").isString())
+                .andExpect(jsonPath("$.data.content[0].profileImage").value(org.hamcrest.Matchers.containsString(
+                        "profile-images/" + firstUploaderId + "/cursor.jpg")))
+                .andExpect(jsonPath("$.data.content[0].profileImage").value(org.hamcrest.Matchers.containsString(
+                        "X-Goog-Signature=")))
                 .andExpect(jsonPath("$.data.nextCursor").doesNotExist())
                 .andExpect(jsonPath("$.data.hasNext").value(false))
                 .andExpect(jsonPath("$.data.totalElements").doesNotExist());
