@@ -92,6 +92,9 @@
         WHERE videos.deleted_at IS NULL
         <include refid="viewableByViewer"/>
           AND videos.gym_id = #{gymId}
+        <if test="gymGradeId != null">
+          AND videos.gym_grade_id = #{gymGradeId}
+        </if>
         <include refid="notBlockedByViewer"/>
         ORDER BY videos.created_at DESC, videos.id DESC
         LIMIT #{size} OFFSET #{offset}
@@ -103,6 +106,9 @@
         WHERE deleted_at IS NULL
         <include refid="viewableByViewer"/>
           AND gym_id = #{gymId}
+        <if test="gymGradeId != null">
+          AND gym_grade_id = #{gymGradeId}
+        </if>
         <include refid="notBlockedByViewer"/>
     </select>
 

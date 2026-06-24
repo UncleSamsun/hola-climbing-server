@@ -29,14 +29,17 @@ public interface VideoMapper {
                                  @Param("limit") int limit,
                                  @Param("viewerId") Long viewerId);
 
-    /** 특정 암장의 영상 목록. 공개 영상과 viewer 본인의 비공개 영상. viewerId가 있으면 차단한 업로더 영상 제외. */
+    /** 특정 암장의 영상 목록. gymGradeId가 있으면 난이도 필터 적용. */
     List<Video> findByGym(@Param("gymId") Long gymId,
+                          @Param("gymGradeId") Long gymGradeId,
                           @Param("size") int size,
                           @Param("offset") int offset,
                           @Param("viewerId") Long viewerId);
 
-    /** findByGym 결과 총 개수. viewerId가 있으면 차단한 업로더 영상 제외. */
-    long countByGym(@Param("gymId") Long gymId, @Param("viewerId") Long viewerId);
+    /** findByGym 결과 총 개수. gymGradeId가 있으면 난이도 필터 적용. */
+    long countByGym(@Param("gymId") Long gymId,
+                    @Param("gymGradeId") Long gymGradeId,
+                    @Param("viewerId") Long viewerId);
 
     int incrementViewCount(Long id);
 

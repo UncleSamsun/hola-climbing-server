@@ -1067,6 +1067,33 @@ class VideoIntegrationTest {
     }
 
     @Test
+    @DisplayName("암장 영상 목록 — gymGradeId로 난이도를 필터한다")
+    void getGymVideos_filtersByGymGradeId() throws Exception {
+        String token = register("gym-grade-filter@hola.com", "gradefilter");
+        var blueVideo = new CreateVideoRequest(1L, "blue clip", "desc", 1002L,
+                ownedObjectPath(token), null, 30, RECORDED_DATE, true);
+        mockMvc.perform(post("/api/videos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(blueVideo)))
+                .andExpect(status().isCreated());
+        var redVideo = new CreateVideoRequest(1L, "red clip", "desc", 1003L,
+                ownedObjectPath(token), null, 30, RECORDED_DATE, true);
+        mockMvc.perform(post("/api/videos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(redVideo)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/gyms/1/videos").param("gymGradeId", "1002"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].gymGrade.id").value(1002))
+                .andExpect(jsonPath("$.data.content[0].gymGrade.label").value("파랑"));
+    }
+
+    @Test
     @DisplayName("암장 영상 목록 — 인증 사용자는 자기 비공개 영상도 본다")
     void getGymVideos_includesOwnPrivateVideo() throws Exception {
         String owner = register("a@hola.com", "climberone");

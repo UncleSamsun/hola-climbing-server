@@ -33,8 +33,8 @@ public interface VideoService {
     CursorPageResponse<VideoSummaryResponse> getFeed(Long uploaderId, String cursor, LocalDate recordedDate,
                                                      int size, Long viewerId);
 
-    /** 특정 암장의 공개 영상 + viewer 본인 비공개 영상 목록. viewerId가 있으면 차단한 업로더 영상 제외. */
-    PageResponse<VideoSummaryResponse> getGymVideos(Long gymId, int page, int size, Long viewerId);
+    /** 특정 암장의 공개 영상 + viewer 본인 비공개 영상 목록. gymGradeId가 있으면 난이도 필터 적용. */
+    PageResponse<VideoSummaryResponse> getGymVideos(Long gymId, Long gymGradeId, int page, int size, Long viewerId);
 
     /** 영상 상세 조회. 비공개 영상은 소유자만 접근 가능하며, 소유자가 아닌 조회 시 조회수가 증가한다. */
     VideoDetailResponse getVideoDetail(Long videoId, Long viewerId);

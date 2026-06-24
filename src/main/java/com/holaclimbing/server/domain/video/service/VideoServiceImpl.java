@@ -160,9 +160,10 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public PageResponse<VideoSummaryResponse> getGymVideos(Long gymId, int page, int size, Long viewerId) {
-        long total = videoMapper.countByGym(gymId, viewerId);
-        List<VideoSummaryResponse> content = videoMapper.findByGym(gymId, size, page * size, viewerId)
+    public PageResponse<VideoSummaryResponse> getGymVideos(Long gymId, Long gymGradeId,
+                                                           int page, int size, Long viewerId) {
+        long total = videoMapper.countByGym(gymId, gymGradeId, viewerId);
+        List<VideoSummaryResponse> content = videoMapper.findByGym(gymId, gymGradeId, size, page * size, viewerId)
                 .stream()
                 .map(v -> VideoSummaryResponse.from(v,
                         gcsStorageService.createReadUrl(v.getGcsPath()),
