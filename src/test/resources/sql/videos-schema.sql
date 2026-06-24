@@ -4,6 +4,7 @@
 DROP TABLE IF EXISTS likes CASCADE;
 DROP TABLE IF EXISTS comments CASCADE;
 DROP TABLE IF EXISTS user_video_interactions CASCADE;
+DROP TABLE IF EXISTS analysis_video_results CASCADE;
 DROP TABLE IF EXISTS videos CASCADE;
 
 CREATE TABLE videos (
@@ -32,6 +33,24 @@ CREATE TABLE videos (
         FOREIGN KEY (gym_id) REFERENCES gyms(id),
     CONSTRAINT fk_videos_gym_grade_same_gym
         FOREIGN KEY (gym_id, gym_grade_id) REFERENCES gym_grades(gym_id, id)
+);
+
+CREATE TABLE analysis_video_results (
+    video_id                BIGINT PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,
+    model_version           VARCHAR(50),
+    ai_techniques           JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ai_is_dynamic           BOOLEAN,
+    ai_dynamic_probability  REAL,
+    final_techniques        JSONB NOT NULL DEFAULT '[]'::jsonb,
+    final_is_dynamic        BOOLEAN,
+    feedback_applied        BOOLEAN NOT NULL DEFAULT FALSE,
+    feedback_note           TEXT,
+    corrected_by            BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    corrected_at            TIMESTAMPTZ,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_analysis_video_dynamic_probability
+        CHECK (ai_dynamic_probability IS NULL OR (ai_dynamic_probability >= 0 AND ai_dynamic_probability <= 1))
 );
 
 CREATE TABLE comments (

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.holaclimbing.server.domain.video.mapper.VideoGymRecommendationMapper">
+
+    <select id="findSeedVideo" resultType="com.holaclimbing.server.domain.video.domain.VideoRecommendationSeed">
+        SELECT v.id,
+               v.user_id,
+               v.is_public,
+               avr.final_techniques::text AS final_techniques,
+               avr.final_is_dynamic
+        FROM videos v
+        LEFT JOIN analysis_video_results avr ON avr.video_id = v.id
+        WHERE v.id = #{videoId}
+          AND v.deleted_at IS NULL
+    </select>
+
+    <select id="findStyleMatchedGyms" resultType="com.holaclimbing.server.domain.video.domain.VideoRecommendedGym">
+        WITH reference_techniques AS (
+            SELECT DISTINCT lower(trim(technique)) AS technique
+            FROM unnest(ARRAY[
+                <foreach collection="techniques" item="technique" separator=",">
+                    #{technique}
+                </foreach>
+            ]::text[]) AS technique
+            WHERE NULLIF(trim(technique), '') IS NOT NULL
+        ),
+        reference_count AS (
+            SELECT COUNT(*) AS technique_count
+            FROM reference_techniques
+        ),
+        active_gyms AS (
+            SELECT g.id, g.name, g.address, g.thumbnail_url, g.business_hours, g.region_code,
+                   g.rating_avg, g.rating_count,
+                   CASE
+                       WHEN #{userId,jdbcType=BIGINT} IS NULL THEN FALSE
+                       ELSE EXISTS (
+                           SELECT 1
+                           FROM favorites f
+                           WHERE f.user_id = #{userId,jdbcType=BIGINT}
+                             AND f.gym_id = g.id
+                       )
+                   END AS favorite,
+                   6371 * acos(GREATEST(-1.0, LEAST(1.0,
+                       cos(radians(#{lat})) * cos(radians(g.lat))
+                       * cos(radians(g.lng) - radians(#{lng}))
+                       + sin(radians(#{lat})) * sin(radians(g.lat))
+                   ))) AS distance_km
+            FROM gyms g
+            WHERE g.lat IS NOT NULL
+              AND g.lng IS NOT NULL
+              AND g.status = 'active'
+              AND g.deleted_at IS NULL
+        ),
+        candidate_videos AS (
+            SELECT v.id AS video_id,
+                   v.gym_id,
+                   avr.final_techniques,
+                   avr.final_is_dynamic
+            FROM videos v
+            JOIN analysis_video_results avr ON avr.video_id = v.id
+            WHERE v.is_public = TRUE
+              AND v.deleted_at IS NULL
+              AND jsonb_typeof(avr.final_techniques) = 'array'
+              AND jsonb_array_length(avr.final_techniques) &gt; 0
+        ),
+        candidate_techniques AS (
+            SELECT cv.gym_id,
+                   lower(trim(t.technique)) AS technique
+            FROM candidate_videos cv
+            CROSS JOIN LATERAL jsonb_array_elements_text(cv.final_techniques) AS t(technique)
+            WHERE NULLIF(trim(t.technique), '') IS NOT NULL
+        ),
+        gym_base AS (
+            SELECT g.id, g.name, g.address, g.thumbnail_url, g.business_hours, g.region_code,
+                   g.rating_avg, g.rating_count, g.favorite, g.distance_km,
+                   CASE
+                       WHEN #{seedIsDynamic,jdbcType=BOOLEAN} IS NULL THEN 1.0
+                       ELSE AVG(CASE WHEN cv.final_is_dynamic = #{seedIsDynamic,jdbcType=BOOLEAN} THEN 1.0 ELSE 0.0 END)
+                   END AS raw_dynamic_score
+            FROM active_gyms g
+            JOIN candidate_videos cv ON cv.gym_id = g.id
+            WHERE g.distance_km &lt;= #{radiusKm}
+            GROUP BY g.id, g.name, g.address, g.thumbnail_url, g.business_hours, g.region_code,
+                     g.rating_avg, g.rating_count, g.favorite, g.distance_km
+            HAVING COUNT(DISTINCT cv.video_id) &gt;= #{minAnalyzedVideos}
+        ),
+        gym_technique_score AS (
+            SELECT ct.gym_id,
+                   COUNT(DISTINCT ct.technique) FILTER (WHERE rt.technique IS NOT NULL)::double precision
+                   / NULLIF((SELECT technique_count FROM reference_count), 0) AS raw_technique_score
+            FROM candidate_techniques ct
+            LEFT JOIN reference_techniques rt ON rt.technique = ct.technique
+            GROUP BY ct.gym_id
+        ),
+        score_inputs AS (
+            SELECT gb.*,
+                   COALESCE(gts.raw_technique_score, 0.0) AS raw_technique_score
+            FROM gym_base gb
+            LEFT JOIN gym_technique_score gts ON gts.gym_id = gb.id
+        ),
+        scored AS (
+            SELECT s.id, s.name, s.address, s.thumbnail_url, s.business_hours, s.region_code,
+                   s.rating_avg, s.rating_count, s.favorite, s.distance_km,
+                   s.raw_technique_score * 0.70 AS technique_score,
+                   s.raw_dynamic_score * 0.15 AS dynamic_score,
+                   (
+                       GREATEST(0.0, 1.0 - (s.distance_km / #{radiusKm})) * 0.10
+                       + LEAST(s.rating_avg::double precision / 5.0, 1.0) * 0.05
+                   ) AS location_rating_score
+            FROM score_inputs s
+        )
+        SELECT id, name, address, thumbnail_url, business_hours, region_code,
+               rating_avg, rating_count, favorite, distance_km,
+               technique_score + dynamic_score + location_rating_score AS similarity_score,
+               technique_score, dynamic_score, location_rating_score
+        FROM scored
+        ORDER BY similarity_score DESC,
+                 technique_score DESC,
+                 dynamic_score DESC,
+                 distance_km ASC,
+                 rating_avg DESC,
+                 rating_count DESC,
+                 id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findNearbyGyms" resultType="com.holaclimbing.server.domain.video.domain.VideoRecommendedGym">
+        WITH candidate AS (
+            SELECT g.id, g.name, g.address, g.thumbnail_url, g.business_hours, g.region_code,
+                   g.rating_avg, g.rating_count,
+                   CASE
+                       WHEN #{userId,jdbcType=BIGINT} IS NULL THEN FALSE
+                       ELSE EXISTS (
+                           SELECT 1
+                           FROM favorites f
+                           WHERE f.user_id = #{userId,jdbcType=BIGINT}
+                             AND f.gym_id = g.id
+                       )
+                   END AS favorite,
+                   6371 * acos(GREATEST(-1.0, LEAST(1.0,
+                       cos(radians(#{lat})) * cos(radians(g.lat))
+                       * cos(radians(g.lng) - radians(#{lng}))
+                       + sin(radians(#{lat})) * sin(radians(g.lat))
+                   ))) AS distance_km
+            FROM gyms g
+            WHERE g.lat IS NOT NULL
+              AND g.lng IS NOT NULL
+              AND g.status = 'active'
+              AND g.deleted_at IS NULL
+        )
+        SELECT id, name, address, thumbnail_url, business_hours, region_code,
+               rating_avg, rating_count, favorite, distance_km
+        FROM candidate
+        WHERE distance_km &lt;= #{radiusKm}
+        ORDER BY distance_km ASC,
+                 rating_avg DESC,
+                 rating_count DESC,
+                 id ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
