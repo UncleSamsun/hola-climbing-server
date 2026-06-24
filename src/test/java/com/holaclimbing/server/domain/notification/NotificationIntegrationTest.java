@@ -110,8 +110,7 @@ class NotificationIntegrationTest {
 
         comment(commenter.token(), videoId, "great climb", null);
 
-        mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + owner.token()))
-                .andExpect(status().isOk())
+        awaitNotifications(owner.token(), 1)
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].type").value("comment"))
                 .andExpect(jsonPath("$.data.content[0].senderId").value(commenter.id()))
@@ -144,7 +143,7 @@ class NotificationIntegrationTest {
                         .header("Authorization", "Bearer " + liker.token()))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + owner.token()))
+        awaitNotifications(owner.token(), 1)
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].type").value("like"));
         assertSinglePush("owner-like-token", "좋아요", "like", "video", videoId);
@@ -191,7 +190,7 @@ class NotificationIntegrationTest {
                         .header("Authorization", "Bearer " + follower.token()))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + target.token()))
+        awaitNotifications(target.token(), 1)
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].type").value("follow"))
                 .andExpect(jsonPath("$.data.content[0].senderId").value(follower.id()));
@@ -209,7 +208,7 @@ class NotificationIntegrationTest {
 
         long replyCommentId = comment(replier.token(), videoId, "nice point", parentCommentId);
 
-        mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + owner.token()))
+        awaitNotifications(owner.token(), 1)
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].type").value("reply"));
         assertSinglePush("owner-reply-token", "새 답글", "reply", "comment", replyCommentId);
@@ -257,6 +256,7 @@ class NotificationIntegrationTest {
         comment(other.token(), videoId, "c1", null);
         mockMvc.perform(post("/api/videos/" + videoId + "/like")
                 .header("Authorization", "Bearer " + other.token())).andExpect(status().isOk());
+        awaitNotifications(owner.token(), 2);
 
         mockMvc.perform(patch("/api/notifications/all/read")
                         .header("Authorization", "Bearer " + owner.token()))
@@ -398,8 +398,22 @@ class NotificationIntegrationTest {
     }
 
     private long firstNotificationId(String token) throws Exception {
-        return dataOf(mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + token)))
-                .path("content").get(0).path("id").asLong();
+        return dataOf(awaitNotifications(token, 1))
+                .path("content").get(0)
+                .path("id")
+                .asLong();
+    }
+
+    private ResultActions awaitNotifications(String token, int expectedTotal) throws Exception {
+        ResultActions[] result = new ResultActions[1];
+        await().atMost(3, TimeUnit.SECONDS).untilAsserted(() -> {
+            ResultActions actions = mockMvc.perform(get("/api/notifications")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.totalElements").value(expectedTotal));
+            result[0] = actions;
+        });
+        return result[0];
     }
 
     private void assertSinglePush(String token, String title, String type, String targetType, long targetId) {
