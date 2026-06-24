@@ -231,6 +231,7 @@
             COALESCE(r.final_techniques, '[]'::jsonb)
         ) AS t(technique)
         WHERE g.status = 'active'
+          AND g.deleted_at IS NULL
           AND v.deleted_at IS NULL
           AND v.is_public = TRUE
           AND v.status != 'failed'
