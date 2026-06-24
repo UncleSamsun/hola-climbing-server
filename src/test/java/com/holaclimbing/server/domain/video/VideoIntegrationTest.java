@@ -33,6 +33,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -56,6 +57,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "classpath:sql/terms-data.sql",
         "classpath:sql/gyms-schema.sql",
         "classpath:sql/gyms-data.sql",
+        "classpath:sql/favorites-schema.sql",
         "classpath:sql/videos-schema.sql",
         "classpath:sql/notifications-schema.sql"
 }, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
@@ -587,6 +589,82 @@ class VideoIntegrationTest {
     void getFeed_invalidRecordedDate_returns400() throws Exception {
         mockMvc.perform(get("/api/videos").param("recordedDate", "06-03-2026"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("영상 기반 암장 추천 — 공개 분석 영상의 기술·동적 성향이 가까운 암장을 우선하고 추천 이유를 내려준다")
+    void getVideoGymRecommendations_ranksByTechniqueAndDynamicReasons() throws Exception {
+        String viewer = register("viewer@hola.com", "viewer");
+        String owner = register("style-owner@hola.com", "styleowner");
+        long viewerId = userMapper.findByEmail("viewer@hola.com").getId();
+        jdbcTemplate.update("INSERT INTO favorites (user_id, gym_id) VALUES (?, ?)", viewerId, 2L);
+
+        long seed = createVideoAtGym(owner, true, 1L, 1003L);
+        insertAnalysis(seed, List.of("heel_hook", "dyno"), true);
+
+        long hongdae1 = createVideoAtGym(owner, true, 2L, 1005L);
+        long hongdae2 = createVideoAtGym(owner, true, 2L, 1005L);
+        insertAnalysis(hongdae1, List.of("heel_hook", "dyno"), true);
+        insertAnalysis(hongdae2, List.of("heel_hook", "toe_hook"), true);
+
+        long pangyo1 = createVideoAtGym(owner, true, 3L, 1008L);
+        long pangyo2 = createVideoAtGym(owner, true, 3L, 1008L);
+        insertAnalysis(pangyo1, List.of("slab", "crimp"), false);
+        insertAnalysis(pangyo2, List.of("mantle"), false);
+
+        mockMvc.perform(get("/api/videos/{videoId}/recommendations/gyms", seed)
+                        .param("lat", "37.4979")
+                        .param("lng", "127.0276")
+                        .param("radius", "30")
+                        .param("size", "2")
+                        .header("Authorization", "Bearer " + viewer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].id").value(2))
+                .andExpect(jsonPath("$.data[0].source").value("video_style_match"))
+                .andExpect(jsonPath("$.data[0].isFavorite").value(true))
+                .andExpect(jsonPath("$.data[0].reasons").value(org.hamcrest.Matchers.containsInAnyOrder("technique", "dynamic")))
+                .andExpect(jsonPath("$.data[0].techniqueScore").value(org.hamcrest.Matchers.greaterThan(0.6)))
+                .andExpect(jsonPath("$.data[0].dynamicScore").value(org.hamcrest.Matchers.greaterThan(0.1)))
+                .andExpect(jsonPath("$.data[1].id").value(3));
+    }
+
+    @Test
+    @DisplayName("영상 기반 암장 추천 — 암장별 공개 분석 영상이 부족하면 거리 기반 fallback으로 내려준다")
+    void getVideoGymRecommendations_fallsBackToNearbyWhenGymAnalysisIsSparse() throws Exception {
+        String owner = register("fallback-owner@hola.com", "fallbackowner");
+        long seed = createVideoAtGym(owner, true, 1L, 1003L);
+        insertAnalysis(seed, List.of("heel_hook", "dyno"), true);
+        long onlyOneAnalyzed = createVideoAtGym(owner, true, 2L, 1005L);
+        insertAnalysis(onlyOneAnalyzed, List.of("heel_hook", "dyno"), true);
+
+        mockMvc.perform(get("/api/videos/{videoId}/recommendations/gyms", seed)
+                        .param("lat", "37.4979")
+                        .param("lng", "127.0276")
+                        .param("radius", "30")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].source").value("nearby"))
+                .andExpect(jsonPath("$.data[0].reasons").value(org.hamcrest.Matchers.hasItem("distance")))
+                .andExpect(jsonPath("$.data[0].similarityScore").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("영상 기반 암장 추천 — 기준 영상이 비공개면 추천을 조회할 수 없다")
+    void getVideoGymRecommendations_privateSeedVideoReturns403() throws Exception {
+        String owner = register("private-owner@hola.com", "privateowner");
+        long seed = createVideoAtGym(owner, false, 1L, 1003L);
+        insertAnalysis(seed, List.of("heel_hook", "dyno"), true);
+
+        mockMvc.perform(get("/api/videos/{videoId}/recommendations/gyms", seed)
+                        .param("lat", "37.4979")
+                        .param("lng", "127.0276")
+                        .param("radius", "30")
+                        .param("size", "2"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("V006"));
     }
 
     @Test
@@ -1211,7 +1289,16 @@ class VideoIntegrationTest {
     }
 
     private long createVideoOn(String token, boolean isPublic, LocalDate recordedDate) throws Exception {
-        var req = new CreateVideoRequest(1L, "My Send", "a clean ascent", 1003L,
+        return createVideoAtGym(token, isPublic, 1L, 1003L, recordedDate);
+    }
+
+    private long createVideoAtGym(String token, boolean isPublic, Long gymId, Long gymGradeId) throws Exception {
+        return createVideoAtGym(token, isPublic, gymId, gymGradeId, RECORDED_DATE);
+    }
+
+    private long createVideoAtGym(String token, boolean isPublic, Long gymId, Long gymGradeId,
+                                  LocalDate recordedDate) throws Exception {
+        var req = new CreateVideoRequest(gymId, "My Send", "a clean ascent", gymGradeId,
                 ownedObjectPath(token), null, 45, recordedDate, isPublic);
         return dataOf(mockMvc.perform(post("/api/videos")
                 .header("Authorization", "Bearer " + token)
@@ -1219,6 +1306,16 @@ class VideoIntegrationTest {
                 .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated()))
                 .path("id").asLong();
+    }
+
+    private void insertAnalysis(long videoId, List<String> techniques, Boolean isDynamic) throws Exception {
+        String techniquesJson = objectMapper.writeValueAsString(techniques);
+        jdbcTemplate.update("""
+                INSERT INTO analysis_video_results (
+                    video_id, model_version, ai_techniques, ai_is_dynamic, final_techniques, final_is_dynamic
+                )
+                VALUES (?, 'test', CAST(? AS jsonb), ?, CAST(? AS jsonb), ?)
+                """, videoId, techniquesJson, isDynamic, techniquesJson, isDynamic);
     }
 
     private long addComment(String token, long videoId, String content) throws Exception {
