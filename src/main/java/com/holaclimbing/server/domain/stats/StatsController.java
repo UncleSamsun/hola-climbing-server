@@ -2,9 +2,11 @@ package com.holaclimbing.server.domain.stats;
 
 import static com.holaclimbing.server.common.exception.error.ErrorCode.*;
 
+import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.docs.ApiErrorCodes;
 import com.holaclimbing.server.common.response.ApiResponse;
 import com.holaclimbing.server.domain.stats.dto.response.ClimbingLogResponse;
+import com.holaclimbing.server.domain.stats.dto.response.GymRankingResponse;
 import com.holaclimbing.server.domain.stats.dto.response.MonthlyCalendarResponse;
 import com.holaclimbing.server.domain.stats.dto.response.TechniqueStatsResponse;
 import com.holaclimbing.server.domain.stats.dto.response.UserStatsResponse;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 /**
@@ -49,6 +52,16 @@ public class StatsController {
         return ApiResponse.success(statsService.getTechniqueStats(userId));
     }
 
+    @ApiErrorCodes({USER_NOT_FOUND, INVALID_MONTH, INVALID_INPUT})
+    @GetMapping("/me/gyms/rankings")
+    public ApiResponse<GymRankingResponse> getMyGymRankings(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int limit) {
+        return ApiResponse.success(statsService.getMyGymRankings(userId, parseOptionalMonth(month), cursor, limit));
+    }
+
     @ApiErrorCodes({USER_NOT_FOUND})
     @GetMapping("/users/{userId}")
     public ApiResponse<UserStatsResponse> getUserStats(@PathVariable Long userId) {
@@ -70,5 +83,17 @@ public class StatsController {
             @AuthenticationPrincipal Long userId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ApiResponse.success(climbingLogService.getLogsByDate(userId, date));
+    }
+
+    private YearMonth parseOptionalMonth(String month) {
+        if (month == null || month.isBlank()) {
+            return null;
+        }
+
+        try {
+            return YearMonth.parse(month);
+        } catch (Exception e) {
+            throw new BusinessException(INVALID_MONTH);
+        }
     }
 }

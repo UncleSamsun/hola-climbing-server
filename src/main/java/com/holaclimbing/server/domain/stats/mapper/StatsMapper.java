@@ -1,8 +1,13 @@
 package com.holaclimbing.server.domain.stats.mapper;
 
 import com.holaclimbing.server.domain.stats.domain.DynamicSegmentCounts;
+import com.holaclimbing.server.domain.stats.domain.GymRankingRow;
 import com.holaclimbing.server.domain.stats.domain.Stats;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Mapper
 public interface StatsMapper {
@@ -15,4 +20,12 @@ public interface StatsMapper {
      * final_is_dynamic = true / false 개수를 한 번에 집계. 분석 데이터가 없으면 둘 다 0.
      */
     DynamicSegmentCounts findDynamicSegmentCountsByUserId(Long userId);
+
+    List<GymRankingRow> findGymRankings(@Param("userId") Long userId,
+                                        @Param("from") LocalDate from,
+                                        @Param("to") LocalDate to,
+                                        @Param("cursorVisitCount") Integer cursorVisitCount,
+                                        @Param("cursorLatestVisitDate") LocalDate cursorLatestVisitDate,
+                                        @Param("cursorGymId") Long cursorGymId,
+                                        @Param("limit") int limit);
 }

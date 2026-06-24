@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "classpath:sql/terms-data.sql",
         "classpath:sql/gyms-schema.sql",
         "classpath:sql/gyms-data.sql",
+        "classpath:sql/climbing-logs-schema.sql",
         "classpath:sql/videos-schema.sql",
         "classpath:sql/analysis-schema.sql",
         "classpath:sql/stats-schema.sql"
@@ -246,7 +248,123 @@ class StatsIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    @DisplayName("내 암장 랭킹 — 월별 기록을 최빈순으로 조회하고 커서로 다음 랭킹을 가져온다")
+    void getMyGymRankings_monthlyMostVisitedWithCursor() throws Exception {
+        String token = register("ranking@hola.com", "ranking");
+        long userId = userMapper.findByEmail("ranking@hola.com").getId();
+        insertLog(userId, 1L, LocalDate.of(2026, 5, 1));
+        insertLog(userId, 1L, LocalDate.of(2026, 5, 8));
+        insertLog(userId, 1L, LocalDate.of(2026, 5, 20));
+        insertLog(userId, 2L, LocalDate.of(2026, 5, 2));
+        insertLog(userId, 2L, LocalDate.of(2026, 5, 10));
+        long deletedLogId = insertLog(userId, 2L, LocalDate.of(2026, 5, 30));
+        jdbcTemplate.update("UPDATE climbing_logs SET deleted_at = NOW() WHERE id = ?", deletedLogId);
+        insertLog(userId, 3L, LocalDate.of(2026, 5, 15));
+        insertLog(userId, 4L, LocalDate.of(2026, 5, 16));
+        insertLog(userId, 1L, LocalDate.of(2026, 4, 30));
+        register("ranking-other@hola.com", "rankingother");
+        long otherId = userMapper.findByEmail("ranking-other@hola.com").getId();
+        insertLog(otherId, 2L, LocalDate.of(2026, 5, 31));
+
+        ResultActions firstPage = mockMvc.perform(get("/api/stats/me/gyms/rankings")
+                        .header("Authorization", "Bearer " + token)
+                        .param("month", "2026-05")
+                        .param("limit", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period").value("2026-05"))
+                .andExpect(jsonPath("$.data.scope").value("monthly"))
+                .andExpect(jsonPath("$.data.sort").value("mostVisited"))
+                .andExpect(jsonPath("$.data.content[0].rank").value(1))
+                .andExpect(jsonPath("$.data.content[0].gymId").value(1))
+                .andExpect(jsonPath("$.data.content[0].gymName").value("TheClimb Gangnam"))
+                .andExpect(jsonPath("$.data.content[0].visitCount").value(3))
+                .andExpect(jsonPath("$.data.content[0].latestVisitDate").value("2026-05-20"))
+                .andExpect(jsonPath("$.data.content[1].rank").value(2))
+                .andExpect(jsonPath("$.data.content[1].gymId").value(2))
+                .andExpect(jsonPath("$.data.content[1].visitCount").value(2))
+                .andExpect(jsonPath("$.data.content[1].latestVisitDate").value("2026-05-10"))
+                .andExpect(jsonPath("$.data.hasNext").value(true));
+
+        String cursor = dataOf(firstPage).path("nextCursor").asText();
+        mockMvc.perform(get("/api/stats/me/gyms/rankings")
+                        .header("Authorization", "Bearer " + token)
+                        .param("month", "2026-05")
+                        .param("limit", "2")
+                        .param("cursor", cursor))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].rank").value(3))
+                .andExpect(jsonPath("$.data.content[0].gymId").value(4))
+                .andExpect(jsonPath("$.data.content[0].visitCount").value(1))
+                .andExpect(jsonPath("$.data.content[0].latestVisitDate").value("2026-05-16"))
+                .andExpect(jsonPath("$.data.content[1].rank").value(4))
+                .andExpect(jsonPath("$.data.content[1].gymId").value(3))
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.nextCursor").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("내 암장 랭킹 — month가 없으면 전체 기간 기록을 집계한다")
+    void getMyGymRankings_allTimeWhenMonthMissing() throws Exception {
+        String token = register("ranking-all@hola.com", "rankingall");
+        long userId = userMapper.findByEmail("ranking-all@hola.com").getId();
+        insertLog(userId, 1L, LocalDate.of(2026, 4, 1));
+        insertLog(userId, 1L, LocalDate.of(2026, 5, 1));
+        insertLog(userId, 2L, LocalDate.of(2026, 6, 1));
+
+        mockMvc.perform(get("/api/stats/me/gyms/rankings")
+                        .header("Authorization", "Bearer " + token)
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period").doesNotExist())
+                .andExpect(jsonPath("$.data.scope").value("all"))
+                .andExpect(jsonPath("$.data.content[0].gymId").value(1))
+                .andExpect(jsonPath("$.data.content[0].visitCount").value(2))
+                .andExpect(jsonPath("$.data.content[0].latestVisitDate").value("2026-05-01"))
+                .andExpect(jsonPath("$.data.content[1].gymId").value(2))
+                .andExpect(jsonPath("$.data.content[1].visitCount").value(1))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @Test
+    @DisplayName("내 암장 랭킹 — 기록이 없으면 빈 목록을 반환한다")
+    void getMyGymRankings_noLogsReturnsEmptyPage() throws Exception {
+        String token = register("ranking-empty@hola.com", "rankingempty");
+
+        mockMvc.perform(get("/api/stats/me/gyms/rankings")
+                        .header("Authorization", "Bearer " + token)
+                        .param("month", "2026-05"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period").value("2026-05"))
+                .andExpect(jsonPath("$.data.scope").value("monthly"))
+                .andExpect(jsonPath("$.data.content").isEmpty())
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.nextCursor").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("내 암장 랭킹 — 잘못된 month는 T003을 반환한다")
+    void getMyGymRankings_invalidMonthReturns400() throws Exception {
+        String token = register("ranking-invalid@hola.com", "rankinginvalid");
+
+        mockMvc.perform(get("/api/stats/me/gyms/rankings")
+                        .header("Authorization", "Bearer " + token)
+                        .param("month", "2026-13"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("T003"));
+    }
+
     // ===== helpers =====
+
+    private long insertLog(long userId, long gymId, LocalDate climbedOn) {
+        return jdbcTemplate.queryForObject(
+                """
+                        INSERT INTO climbing_logs (user_id, gym_id, climbed_on, grade_counts)
+                        VALUES (?, ?, ?, '{}'::jsonb)
+                        RETURNING id
+                        """,
+                Long.class, userId, gymId, climbedOn);
+    }
 
     private long seedVideo(long userId) {
         return seedVideo(userId, null);

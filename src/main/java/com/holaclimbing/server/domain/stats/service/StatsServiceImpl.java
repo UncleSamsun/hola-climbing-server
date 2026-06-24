@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.holaclimbing.server.common.exception.BusinessException;
 import com.holaclimbing.server.common.exception.error.ErrorCode;
 import com.holaclimbing.server.domain.stats.domain.DynamicSegmentCounts;
+import com.holaclimbing.server.domain.stats.domain.GymRankingRow;
 import com.holaclimbing.server.domain.stats.domain.Stats;
+import com.holaclimbing.server.domain.stats.dto.GymRankingCursor;
+import com.holaclimbing.server.domain.stats.dto.GymRankingCursorCodec;
+import com.holaclimbing.server.domain.stats.dto.response.GymRankingResponse;
 import com.holaclimbing.server.domain.stats.dto.response.TechniqueStatsResponse;
 import com.holaclimbing.server.domain.stats.dto.response.UserStatsResponse;
 import com.holaclimbing.server.domain.stats.mapper.StatsMapper;
@@ -14,6 +18,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -24,6 +31,8 @@ public class StatsServiceImpl implements StatsService {
     private static final TypeReference<Map<String, Integer>> TECHNIQUE_COUNTS_TYPE =
             new TypeReference<>() {
             };
+    private static final int MAX_RANKING_LIMIT = 50;
+    private static final String RANKING_SORT = "mostVisited";
 
     private final StatsMapper statsMapper;
     private final UserMapper userMapper;
@@ -60,6 +69,40 @@ public class StatsServiceImpl implements StatsService {
         return new TechniqueStatsResponse(counts, mostUsed, leastUsed);
     }
 
+    @Override
+    public GymRankingResponse getMyGymRankings(Long userId, YearMonth month, String cursor, int limit) {
+        if (userMapper.findById(userId) == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        int pageSize = Math.min(limit, MAX_RANKING_LIMIT);
+        GymRankingCursor decodedCursor = GymRankingCursorCodec.decode(cursor);
+        LocalDate from = month == null ? null : month.atDay(1);
+        LocalDate to = month == null ? null : month.atEndOfMonth();
+
+        List<GymRankingRow> rows = statsMapper.findGymRankings(
+                userId,
+                from,
+                to,
+                decodedCursor == null ? null : decodedCursor.visitCount(),
+                decodedCursor == null ? null : decodedCursor.latestVisitDate(),
+                decodedCursor == null ? null : decodedCursor.gymId(),
+                pageSize + 1);
+        boolean hasNext = rows.size() > pageSize;
+        List<GymRankingRow> pageRows = hasNext ? rows.subList(0, pageSize) : rows;
+        int rankOffset = decodedCursor == null ? 0 : decodedCursor.rank();
+        List<GymRankingResponse.Item> content = toRankingItems(pageRows, rankOffset);
+        String nextCursor = hasNext && !content.isEmpty()
+                ? encodeNextCursor(pageRows.get(pageRows.size() - 1), content.get(content.size() - 1).rank())
+                : null;
+        return new GymRankingResponse(
+                month == null ? null : month.toString(),
+                month == null ? "all" : "monthly",
+                RANKING_SORT,
+                content,
+                nextCursor,
+                hasNext);
+    }
+
     /** JSONB 문자열({"highstep":12,...})을 Map으로 파싱. 비어 있거나 깨졌으면 빈 Map. */
     private Map<String, Integer> parseTechniqueCounts(String json) {
         if (json == null || json.isBlank()) {
@@ -71,5 +114,27 @@ public class StatsServiceImpl implements StatsService {
             log.warn("technique_counts 파싱 실패: {}", e.getMessage());
             return Map.of();
         }
+    }
+
+    private List<GymRankingResponse.Item> toRankingItems(List<GymRankingRow> rows, int rankOffset) {
+        return java.util.stream.IntStream.range(0, rows.size())
+                .mapToObj(index -> {
+                    GymRankingRow row = rows.get(index);
+                    return new GymRankingResponse.Item(
+                            rankOffset + index + 1,
+                            row.getGymId(),
+                            row.getGymName(),
+                            row.getVisitCount(),
+                            row.getLatestVisitDate());
+                })
+                .toList();
+    }
+
+    private String encodeNextCursor(GymRankingRow row, int rank) {
+        return GymRankingCursorCodec.encode(new GymRankingCursor(
+                row.getVisitCount(),
+                row.getLatestVisitDate(),
+                row.getGymId(),
+                rank));
     }
 }

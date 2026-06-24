@@ -1,7 +1,10 @@
 package com.holaclimbing.server.domain.stats.service;
 
+import com.holaclimbing.server.domain.stats.dto.response.GymRankingResponse;
 import com.holaclimbing.server.domain.stats.dto.response.TechniqueStatsResponse;
 import com.holaclimbing.server.domain.stats.dto.response.UserStatsResponse;
+
+import java.time.YearMonth;
 
 public interface StatsService {
 
@@ -10,4 +13,7 @@ public interface StatsService {
 
     /** 기술별 사용 통계 조회 (최다/최소 사용 기술 포함). */
     TechniqueStatsResponse getTechniqueStats(Long userId);
+
+    /** 내 암장 방문 랭킹 조회. month가 없으면 전체 기간 기록을 집계한다. */
+    GymRankingResponse getMyGymRankings(Long userId, YearMonth month, String cursor, int limit);
 }

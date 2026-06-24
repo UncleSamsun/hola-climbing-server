@@ -57,4 +57,41 @@
         WHERE v.user_id = #{userId} AND v.deleted_at IS NULL
     </select>
 
+    <select id="findGymRankings"
+            resultType="com.holaclimbing.server.domain.stats.domain.GymRankingRow">
+        WITH ranked AS (
+            SELECT
+                l.gym_id,
+                g.name AS gym_name,
+                COUNT(*)::INTEGER AS visit_count,
+                MAX(l.climbed_on) AS latest_visit_date
+            FROM climbing_logs l
+            JOIN gyms g ON g.id = l.gym_id
+            WHERE l.user_id = #{userId}
+              AND l.deleted_at IS NULL
+            <if test="from != null">
+              AND l.climbed_on &gt;= #{from}
+            </if>
+            <if test="to != null">
+              AND l.climbed_on &lt;= #{to}
+            </if>
+            GROUP BY l.gym_id, g.name
+        )
+        SELECT
+            gym_id,
+            gym_name,
+            visit_count,
+            latest_visit_date
+        FROM ranked
+        <if test="cursorVisitCount != null">
+        WHERE visit_count &lt; #{cursorVisitCount}
+           OR (visit_count = #{cursorVisitCount} AND latest_visit_date &lt; #{cursorLatestVisitDate})
+           OR (visit_count = #{cursorVisitCount}
+               AND latest_visit_date = #{cursorLatestVisitDate}
+               AND gym_id &gt; #{cursorGymId})
+        </if>
+        ORDER BY visit_count DESC, latest_visit_date DESC, gym_id ASC
+        LIMIT #{limit}
+    </select>
+
 </mapper>
