@@ -160,7 +160,8 @@ class GymIntegrationTest {
                         .param("lat", "37.4979").param("lng", "127.0276").param("radius", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].id").value(1));
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].distanceKm").isNumber());
     }
 
     @Test

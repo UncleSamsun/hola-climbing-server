@@ -1,5 +1,6 @@
 package com.holaclimbing.server.domain.gym.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.holaclimbing.server.domain.gym.domain.Gym;
 import com.holaclimbing.server.domain.gym.dto.DayHours;
 
@@ -16,7 +17,8 @@ public record GymSummaryResponse(
         int ratingCount,
         Map<String, DayHours> businessHours,
         boolean isOpen,
-        boolean isFavorite
+        boolean isFavorite,
+        @JsonInclude(JsonInclude.Include.NON_NULL) Double distanceKm
 ) {
     public static GymSummaryResponse from(Gym gym) {
         return from(gym, gym.getThumbnailUrl());
@@ -31,6 +33,6 @@ public record GymSummaryResponse(
         return new GymSummaryResponse(
                 gym.getId(), gym.getName(), gym.getAddress(), thumbnailUrl,
                 gym.getRegionCode(), gym.getRatingAvg(), gym.getRatingCount(),
-                businessHours, isOpen, isFavorite);
+                businessHours, isOpen, isFavorite, gym.getDistanceKm());
     }
 }

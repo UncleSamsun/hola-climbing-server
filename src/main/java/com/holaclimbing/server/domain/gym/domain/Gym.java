@@ -33,6 +33,7 @@ public class Gym {
     private BigDecimal ratingAvg;
     private int ratingCount;
     private Boolean favorite;
+    private Double distanceKm;
     private String status;
     private Long createdBy;
     private OffsetDateTime createdAt;

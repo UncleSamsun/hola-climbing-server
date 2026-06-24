@@ -58,7 +58,8 @@
     </select>
 
     <select id="findNearby" resultType="com.holaclimbing.server.domain.gym.domain.Gym">
-        SELECT id, name, address, thumbnail_url, business_hours, region_code, rating_avg, rating_count, lat, lng, favorite
+        SELECT id, name, address, thumbnail_url, business_hours, region_code, rating_avg, rating_count,
+               lat, lng, favorite, distance_km
         FROM (
             SELECT <include refid="summaryColumns"/>, lat, lng,
                    CASE
