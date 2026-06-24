@@ -166,6 +166,31 @@ class MonthlyReportIntegrationTest {
     }
 
     @Test
+    @DisplayName("월간 리포트 — ready 판단은 분석 완료 영상 수를 기준으로 한다")
+    void monthlyReport_requiresAnalyzedVideosForReadiness() throws Exception {
+        String token = register("monthly-pending@hola.com", "monthlypending");
+        long userId = userMapper.findByEmail("monthly-pending@hola.com").getId();
+        insertLog(userId, 1L, LocalDate.of(2026, 5, 10), Map.of("빨강", 10));
+        insertPendingVideo(userId, 1L, 1003L, LocalDate.of(2026, 5, 11));
+        insertPendingVideo(userId, 1L, 1003L, LocalDate.of(2026, 5, 12));
+        insertPendingVideo(userId, 1L, 1003L, LocalDate.of(2026, 5, 13));
+
+        mockMvc.perform(get("/api/stats/me/monthly-reports")
+                        .header("Authorization", "Bearer " + token)
+                        .param("month", "2026-05"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("insufficientData"))
+                .andExpect(jsonPath("$.data.metrics.videos").value(3))
+                .andExpect(jsonPath("$.data.metrics.analyzedVideos").value(0))
+                .andExpect(jsonPath("$.data.metrics.dynamicCount").value(0))
+                .andExpect(jsonPath("$.data.metrics.staticCount").value(0))
+                .andExpect(jsonPath("$.data.metrics.dynamicRatio").doesNotExist())
+                .andExpect(jsonPath("$.data.tip").doesNotExist())
+                .andExpect(jsonPath("$.data.nextMonthGoal").doesNotExist())
+                .andExpect(jsonPath("$.data.narrative").doesNotExist());
+    }
+
+    @Test
     @DisplayName("월간 리포트 — 적게 사용한 기술은 팁·목표·공개 분석 영상 기반 추천 암장으로 이어진다")
     void monthlyReport_recommendsGymsForUnderusedTechniques() throws Exception {
         String token = register("monthly-recommend@hola.com", "monthlyrecommend");
@@ -229,6 +254,23 @@ class MonthlyReportIntegrationTest {
                 """,
                 videoId, techniquesJson, isDynamic, techniquesJson, isDynamic);
         return videoId;
+    }
+
+    private long insertPendingVideo(long userId, long gymId, long gymGradeId, LocalDate recordedDate) {
+        return jdbcTemplate.queryForObject("""
+                INSERT INTO videos (
+                    user_id, gym_id, gym_grade_id, title, gcs_path,
+                    duration_seconds, recorded_date, mime_type, status, is_public
+                )
+                VALUES (?, ?, ?, 'monthly pending clip', ?, 60, ?, 'video/mp4', 'pending', TRUE)
+                RETURNING id
+                """,
+                Long.class,
+                userId,
+                gymId,
+                gymGradeId,
+                "videos/uploads/" + userId + "/monthly-report-pending-" + sequence.incrementAndGet() + ".mp4",
+                recordedDate);
     }
 
     private void insertPublicTechniqueVideo(long gymId, long gymGradeId, LocalDate recordedDate,

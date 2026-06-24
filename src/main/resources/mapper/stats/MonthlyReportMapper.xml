@@ -162,7 +162,7 @@
             ) AS t(technique)
             WHERE v.user_id = #{userId}
               AND v.deleted_at IS NULL
-              AND v.status != 'failed'
+              AND v.status = 'done'
               AND v.recorded_date BETWEEN #{from} AND #{to}
             GROUP BY t.technique
         ) counted
@@ -171,10 +171,14 @@
     <select id="findDynamicStaticAggregate"
             resultType="com.holaclimbing.server.domain.stats.domain.MonthlyReportAggregate">
         SELECT COUNT(*)::int AS videos,
+               COUNT(r.video_id)::int AS analyzed_videos,
                COALESCE(SUM(CASE WHEN r.final_is_dynamic = TRUE THEN 1 ELSE 0 END), 0)::int AS dynamic_count,
                COALESCE(SUM(CASE WHEN r.final_is_dynamic = FALSE THEN 1 ELSE 0 END), 0)::int AS static_count
         FROM videos v
-        LEFT JOIN analysis_video_results r ON r.video_id = v.id
+        LEFT JOIN analysis_video_results r
+          ON r.video_id = v.id
+         AND v.status = 'done'
+         AND r.final_is_dynamic IS NOT NULL
         WHERE v.user_id = #{userId}
           AND v.deleted_at IS NULL
           AND v.status != 'failed'
@@ -234,7 +238,7 @@
           AND g.deleted_at IS NULL
           AND v.deleted_at IS NULL
           AND v.is_public = TRUE
-          AND v.status != 'failed'
+          AND v.status = 'done'
         <choose>
             <when test="techniques != null and techniques.size() > 0">
                 AND t.technique IN

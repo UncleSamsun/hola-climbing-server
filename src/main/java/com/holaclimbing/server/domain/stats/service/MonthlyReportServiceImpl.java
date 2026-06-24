@@ -86,7 +86,7 @@ public class MonthlyReportServiceImpl implements MonthlyReportService {
                 parseTechniqueCounts(monthlyReportMapper.findTechniqueCountsJson(userId, from, to));
         List<String> underusedTechniques = findUnderusedTechniques(techniqueCounts);
 
-        boolean ready = styleAggregate.getVideos() >= properties.minVideos()
+        boolean ready = styleAggregate.getAnalyzedVideos() >= properties.minVideos()
                 && sourceAggregate.getProblemsSolved() >= properties.minProblems();
 
         MonthlyReportResponse.Grade grade = gymId == null ? null : findGrade(userId, gymId, month);
@@ -219,6 +219,7 @@ public class MonthlyReportServiceImpl implements MonthlyReportService {
         MonthlyReportResponse.Metrics metrics = new MonthlyReportResponse.Metrics(
                 totals.getSessions(),
                 style.getVideos(),
+                style.getAnalyzedVideos(),
                 totals.getProblemsSolved(),
                 totals.getGymsVisited(),
                 totals.getPrimaryGymId(),

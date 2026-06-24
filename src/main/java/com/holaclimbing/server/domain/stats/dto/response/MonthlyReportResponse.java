@@ -23,6 +23,7 @@ public record MonthlyReportResponse(
     public record Metrics(
             int sessions,
             int videos,
+            int analyzedVideos,
             int problemsSolved,
             int gymsVisited,
             Long primaryGymId,

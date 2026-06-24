@@ -17,6 +17,7 @@ public class MonthlyReportAggregate {
 
     private int sessions;
     private int videos;
+    private int analyzedVideos;
     private int problemsSolved;
     private int gymsVisited;
     private Long primaryGymId;
@@ -42,6 +43,7 @@ public class MonthlyReportAggregate {
         return Map.of(
                 "sessions", sessions,
                 "videos", videos,
+                "analyzedVideos", analyzedVideos,
                 "problemsSolved", problemsSolved,
                 "gymsVisited", gymsVisited,
                 "primaryGymName", primaryGymName == null ? "" : primaryGymName,
