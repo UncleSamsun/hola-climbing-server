@@ -487,20 +487,14 @@ CREATE TABLE monthly_reports (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_monthly_reports_period
-        CHECK (period ~ '^[0-9]{4}-[0-9]{2}$'),
+        CHECK (period ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
     CONSTRAINT chk_monthly_reports_status
         CHECK (status IN ('ready', 'insufficientData', 'generating', 'failed')),
     CONSTRAINT chk_monthly_reports_source
-        CHECK (source IN ('log', 'videoFallback', 'none'))
+        CHECK (source IN ('log', 'videoFallback', 'none')),
+    CONSTRAINT uq_monthly_reports_user_period_gym
+        UNIQUE NULLS NOT DISTINCT (user_id, period, selected_gym_id)
 );
-
-CREATE UNIQUE INDEX uq_monthly_reports_user_period_no_gym
-    ON monthly_reports(user_id, period)
-    WHERE selected_gym_id IS NULL;
-
-CREATE UNIQUE INDEX uq_monthly_reports_user_period_gym
-    ON monthly_reports(user_id, period, selected_gym_id)
-    WHERE selected_gym_id IS NOT NULL;
 
 CREATE INDEX idx_monthly_reports_user_period
     ON monthly_reports(user_id, period DESC);
