@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -31,9 +32,7 @@ public class OpenAiMonthlyReportNarrativeClient implements MonthlyReportNarrativ
                                            Map<String, Integer> techniqueCounts,
                                            List<String> underusedTechniques) {
         try {
-            RestClient client = restClientBuilder.clone()
-                    .baseUrl(properties.llm().baseUrl())
-                    .build();
+            RestClient client = openAiRestClient();
             String body = client.post()
                     .uri("/chat/completions")
                     .headers(headers -> headers.setBearerAuth(properties.llm().apiKey()))
@@ -43,18 +42,38 @@ public class OpenAiMonthlyReportNarrativeClient implements MonthlyReportNarrativ
                     .body(String.class);
 
             JsonNode response = objectMapper.readTree(body);
-            JsonNode content = response.path("choices").path(0).path("message").path("content");
-            JsonNode narrative = objectMapper.readTree(content.asText("{}"));
+            JsonNode content = response.at("/choices/0/message/content");
+            if (!content.isTextual() || content.asText().isBlank()) {
+                throw new IllegalStateException("monthly report LLM response missing message content");
+            }
 
+            JsonNode narrative = objectMapper.readTree(content.asText());
             return new MonthlyReportNarrative(
-                    narrative.path("headline").asText("볼륨과 스타일이 함께 쌓인 달"),
-                    narrative.path("summary").asText("이번 달 기록에서 다음 성장 포인트가 뚜렷해졌어요."),
+                    requiredText(narrative, "headline"),
+                    requiredText(narrative, "summary"),
                     parseHighlights(narrative.path("highlights"), aggregate, techniqueCounts, underusedTechniques)
             );
         } catch (Exception e) {
             log.warn("monthly report LLM narrative generation failed: {}", e.toString());
             return fallback(aggregate, techniqueCounts, underusedTechniques);
         }
+    }
+
+    private RestClient openAiRestClient() {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        int timeoutMillis = timeoutMillis();
+        requestFactory.setConnectTimeout(timeoutMillis);
+        requestFactory.setReadTimeout(timeoutMillis);
+        return restClientBuilder.clone()
+                .baseUrl(properties.llm().baseUrl())
+                .requestFactory(requestFactory)
+                .build();
+    }
+
+    private int timeoutMillis() {
+        int seconds = properties.llm().timeoutSeconds();
+        long millis = Math.max(1L, seconds) * 1000L;
+        return (int) Math.min(millis, Integer.MAX_VALUE);
     }
 
     private Map<String, Object> requestBody(MonthlyReportAggregate aggregate,
@@ -72,6 +91,14 @@ public class OpenAiMonthlyReportNarrativeClient implements MonthlyReportNarrativ
                 ),
                 "response_format", Map.of("type", "json_object")
         );
+    }
+
+    private String requiredText(JsonNode parent, String fieldName) {
+        JsonNode value = parent.path(fieldName);
+        if (!value.isTextual() || value.asText().isBlank()) {
+            throw new IllegalStateException("monthly report LLM response missing " + fieldName);
+        }
+        return value.asText();
     }
 
     private List<String> parseHighlights(JsonNode highlights,
