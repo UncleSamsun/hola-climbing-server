@@ -33,8 +33,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -144,6 +148,36 @@ class NotificationIntegrationTest {
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].type").value("like"));
         assertSinglePush("owner-like-token", "좋아요", "like", "video", videoId);
+    }
+
+    @Test
+    @DisplayName("좋아요 — FCM 전송이 지연되어도 API 응답은 먼저 반환된다")
+    void like_returnsBeforeFcmSendCompletes() throws Exception {
+        TestUser owner = register("a@hola.com", "climberone");
+        TestUser liker = register("b@hola.com", "climbertwo");
+        registerDeviceToken(owner.token(), "owner-like-blocked-token");
+        long videoId = createVideo(owner.token());
+        recordingFcmSender.blockUntilReleased();
+
+        CompletableFuture<Void> request = CompletableFuture.runAsync(() -> {
+            try {
+                mockMvc.perform(post("/api/videos/" + videoId + "/like")
+                                .header("Authorization", "Bearer " + liker.token()))
+                        .andExpect(status().isOk());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        try {
+            await().atMost(2, TimeUnit.SECONDS)
+                    .untilAsserted(() -> assertThat(request.isDone()).isTrue());
+            assertThat(recordingFcmSender.awaitEntered(2, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            recordingFcmSender.release();
+            request.join();
+        }
+        assertSinglePush("owner-like-blocked-token", "좋아요", "like", "video", videoId);
     }
 
     @Test
@@ -369,7 +403,8 @@ class NotificationIntegrationTest {
     }
 
     private void assertSinglePush(String token, String title, String type, String targetType, long targetId) {
-        assertThat(recordingFcmSender.sent()).hasSize(1);
+        await().atMost(2, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(recordingFcmSender.sent()).hasSize(1));
         SentPush push = recordingFcmSender.sent().getFirst();
         assertThat(push.tokens()).containsExactly(token);
         assertThat(push.title()).isEqualTo(title);
@@ -389,10 +424,18 @@ class NotificationIntegrationTest {
     static class RecordingFcmSender implements FcmSender {
 
         private final List<SentPush> sent = new ArrayList<>();
+        private CountDownLatch entered = new CountDownLatch(0);
+        private CountDownLatch release = new CountDownLatch(0);
 
         @Override
         public synchronized void send(List<String> tokens, String title, String body, Map<String, String> data) {
             sent.add(new SentPush(List.copyOf(tokens), title, body, Map.copyOf(data)));
+            entered.countDown();
+            try {
+                release.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         synchronized List<SentPush> sent() {
@@ -401,6 +444,21 @@ class NotificationIntegrationTest {
 
         synchronized void clear() {
             sent.clear();
+            entered = new CountDownLatch(0);
+            release = new CountDownLatch(0);
+        }
+
+        synchronized void blockUntilReleased() {
+            entered = new CountDownLatch(1);
+            release = new CountDownLatch(1);
+        }
+
+        boolean awaitEntered(long timeout, TimeUnit unit) throws InterruptedException {
+            return entered.await(timeout, unit);
+        }
+
+        void release() {
+            release.countDown();
         }
     }
 
