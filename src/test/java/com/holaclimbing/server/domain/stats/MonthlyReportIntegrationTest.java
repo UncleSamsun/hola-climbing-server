@@ -171,9 +171,9 @@ class MonthlyReportIntegrationTest {
         String token = register("monthly-recommend@hola.com", "monthlyrecommend");
         long userId = userMapper.findByEmail("monthly-recommend@hola.com").getId();
         insertLog(userId, 1L, LocalDate.of(2026, 5, 10), Map.of("빨강", 12));
-        insertVideo(userId, 1L, 1003L, LocalDate.of(2026, 5, 11), true, "[\"dyno\"]");
-        insertVideo(userId, 1L, 1003L, LocalDate.of(2026, 5, 12), true, "[\"dyno\"]");
-        insertVideo(userId, 1L, 1003L, LocalDate.of(2026, 5, 13), true, "[\"dyno\"]");
+        insertVideo(userId, 1L, 1003L, LocalDate.of(2026, 5, 11), true, "[\"dyno\", \"high_step\"]");
+        insertVideo(userId, 1L, 1003L, LocalDate.of(2026, 5, 12), true, "[\"flagging\", \"toe_hook\"]");
+        insertVideo(userId, 1L, 1003L, LocalDate.of(2026, 5, 13), true, "[\"coordination\", \"dyno\"]");
         insertPublicTechniqueVideo(2L, 1004L, LocalDate.of(2026, 5, 12), false, "[\"heel_hook\", \"lock_off\"]");
         insertPublicTechniqueVideo(2L, 1005L, LocalDate.of(2026, 5, 13), false, "[\"heel_hook\"]");
 
@@ -183,8 +183,15 @@ class MonthlyReportIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("ready"))
                 .andExpect(jsonPath("$.data.tip.type").value("underusedTechnique"))
+                .andExpect(jsonPath("$.data.tip.techniqueKeys[0]").value("heel_hook"))
+                .andExpect(jsonPath("$.data.tip.techniqueKeys[1]").value("lock_off"))
                 .andExpect(jsonPath("$.data.nextMonthGoal.metric").value("specificTechnique"))
-                .andExpect(jsonPath("$.data.recommendedGyms[0].gymId").value(2));
+                .andExpect(jsonPath("$.data.nextMonthGoal.techniqueKeys[0]").value("heel_hook"))
+                .andExpect(jsonPath("$.data.nextMonthGoal.techniqueKeys[1]").value("lock_off"))
+                .andExpect(jsonPath("$.data.recommendedGyms[0].gymId").value(2))
+                .andExpect(jsonPath("$.data.recommendedGyms[0].matchedTechniqueKeys[0]").value("heel_hook"))
+                .andExpect(jsonPath("$.data.recommendedGyms[0].matchedTechniqueKeys[1]").value("lock_off"))
+                .andExpect(jsonPath("$.data.recommendedGyms[0].matchingVideoCount").value(2));
     }
 
     private void insertLog(long userId, long gymId, LocalDate climbedOn, Map<String, Integer> gradeCounts)
