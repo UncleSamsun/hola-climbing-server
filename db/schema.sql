@@ -1,5 +1,5 @@
 -- =====================================================================
--- Hola Climbing Log - Database Schema v2 (명세서 v0.2 기준)
+-- Hola Climbing Log - Database Schema v2 (Flyway V1~V12 기준)
 -- =====================================================================
 
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -90,6 +90,7 @@ CREATE TABLE user_blocks (
     CHECK (blocker_id <> blocked_id)
 );
 CREATE INDEX idx_user_blocks_blocker ON user_blocks(blocker_id);
+CREATE INDEX idx_user_blocks_blocked ON user_blocks(blocked_id);
 
 
 CREATE TABLE device_tokens (
@@ -389,7 +390,32 @@ CREATE INDEX idx_favorites_gym  ON favorites(gym_id);
 
 
 -- =====================================================================
--- 8. CHAT DOMAIN (F-04-08) - 암장별 그룹 채팅 + 한줄게시판
+-- 8. RECOMMENDATION DOMAIN - 추천 피드 노출/조회 이력
+-- =====================================================================
+
+CREATE TABLE user_video_interactions (
+    user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    video_id            BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+    impression_count    INTEGER NOT NULL DEFAULT 0,
+    viewed_count        INTEGER NOT NULL DEFAULT 0,
+    last_impressed_at   TIMESTAMPTZ,
+    last_viewed_at      TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, video_id)
+);
+
+CREATE INDEX idx_user_video_interactions_user_impressed
+    ON user_video_interactions(user_id, last_impressed_at DESC)
+    WHERE last_impressed_at IS NOT NULL;
+
+CREATE INDEX idx_user_video_interactions_user_viewed
+    ON user_video_interactions(user_id, last_viewed_at DESC)
+    WHERE last_viewed_at IS NOT NULL;
+
+
+-- =====================================================================
+-- 9. CHAT DOMAIN (F-04-08) - 암장별 그룹 채팅 + 한줄게시판
 -- =====================================================================
 
 CREATE TABLE gym_board_posts (
@@ -437,7 +463,7 @@ CREATE INDEX idx_chat_messages_room ON chat_messages(room_id, created_at DESC);
 
 
 -- =====================================================================
--- 9. STATS DOMAIN (F-03)
+-- 10. STATS DOMAIN (F-03)
 -- =====================================================================
 
 CREATE TABLE user_stats (
@@ -501,7 +527,7 @@ CREATE INDEX idx_monthly_reports_user_period
 
 
 -- =====================================================================
--- 10. INITIAL DATA
+-- 11. INITIAL DATA
 -- =====================================================================
 
 INSERT INTO terms_versions (type, version, title, content, is_required, effective_at) VALUES
