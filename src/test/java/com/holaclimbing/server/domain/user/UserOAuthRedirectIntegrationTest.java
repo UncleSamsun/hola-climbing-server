@@ -186,14 +186,19 @@ class UserOAuthRedirectIntegrationTest {
 
         String oauthCode = appleCallbackAndExtractOauthCode("apple-existing-code", null);
 
-        mockMvc.perform(post("/api/auth/oauth/result")
+        JsonNode data = dataOf(mockMvc.perform(post("/api/auth/oauth/result")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new OAuthResultRequest(oauthCode))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("LOGGED_IN"))
                 .andExpect(jsonPath("$.data.signupRequired").value(false))
                 .andExpect(jsonPath("$.data.token.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.data.token.refreshToken").isNotEmpty());
+                .andExpect(jsonPath("$.data.token.refreshToken").isNotEmpty()));
+
+        String accessToken = data.path("token").path("accessToken").asText();
+        mockMvc.perform(get("/api/users/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.nickname").value("appleexisting"));
     }
 
     @Test
