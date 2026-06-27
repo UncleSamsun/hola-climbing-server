@@ -140,6 +140,39 @@ class UserOAuthRedirectIntegrationTest {
     }
 
     @Test
+    @DisplayName("Apple OAuth callback accepts form_post user payload and returns pending signup")
+    void applePostCallback_acceptsFormPostPayload() throws Exception {
+        String authorizeLocation = authorizeAndGetProviderLocation("apple");
+        String state = queryOf(authorizeLocation).get("state");
+
+        String frontendLocation = mockMvc.perform(post("/api/auth/oauth/apple/callback")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("code", "apple-new-code")
+                        .param("state", state)
+                        .param("user", """
+                                {"name":{"firstName":"Apple","lastName":"New"},"email":"apple-new@hola.com"}
+                                """))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().exists(HttpHeaders.LOCATION))
+                .andReturn()
+                .getResponse()
+                .getHeader(HttpHeaders.LOCATION);
+
+        String oauthCode = queryOf(frontendLocation).get("oauthCode");
+        assertThat(oauthCode).isNotBlank();
+
+        mockMvc.perform(post("/api/auth/oauth/result")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new OAuthResultRequest(oauthCode))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SIGNUP_REQUIRED"))
+                .andExpect(jsonPath("$.data.signupRequired").value(true))
+                .andExpect(jsonPath("$.data.signupToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.email").value("apple-new@hola.com"))
+                .andExpect(jsonPath("$.data.suggestedNickname").value("Apple New"));
+    }
+
+    @Test
     @DisplayName("OAuth callback for existing social user redirects with one-time oauthCode and returns Hola tokens")
     void callback_existingSocialUser_returnsTokenThroughOneTimeCode() throws Exception {
         User existing = User.builder()
@@ -402,7 +435,14 @@ class UserOAuthRedirectIntegrationTest {
         @Bean
         @Primary
         OAuthProviderClientResolver fakeOAuthProviderClientResolver() {
-            return new OAuthProviderClientResolver(List.of(new OAuthProviderClient() {
+            return new OAuthProviderClientResolver(List.of(
+                    fakeGoogleOAuthProviderClient(),
+                    fakeAppleOAuthProviderClient()
+            ));
+        }
+
+        private OAuthProviderClient fakeGoogleOAuthProviderClient() {
+            return new OAuthProviderClient() {
                 @Override
                 public OAuthProvider provider() {
                     return OAuthProvider.GOOGLE;
@@ -435,7 +475,35 @@ class UserOAuthRedirectIntegrationTest {
                         default -> throw new AssertionError("Unexpected OAuth code: " + request.code());
                     };
                 }
-            }));
+            };
+        }
+
+        private OAuthProviderClient fakeAppleOAuthProviderClient() {
+            return new OAuthProviderClient() {
+                @Override
+                public OAuthProvider provider() {
+                    return OAuthProvider.APPLE;
+                }
+
+                @Override
+                public OAuthUserProfile fetchProfile(OAuthAuthorizationCodeRequest request) {
+                    return switch (request.code()) {
+                        case "apple-new-code" -> {
+                            assertThat(request.nonce()).isNotBlank();
+                            assertThat(request.providerUserJson())
+                                    .contains("\"firstName\":\"Apple\"", "\"lastName\":\"New\"");
+                            yield new OAuthUserProfile(
+                                    OAuthProvider.APPLE,
+                                    "apple-sub-new",
+                                    "apple-new@hola.com",
+                                    "Apple New",
+                                    null
+                            );
+                        }
+                        default -> throw new AssertionError("Unexpected Apple OAuth code: " + request.code());
+                    };
+                }
+            };
         }
     }
 }

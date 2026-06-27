@@ -59,6 +59,16 @@ public class OAuthRedirectController {
         return redirect(oauthRedirectService.handleCallback(provider, code, state, error));
     }
 
+    @ApiErrorCodes({UNSUPPORTED_OAUTH_PROVIDER, INVALID_OAUTH_STATE, OAUTH_AUTHORIZATION_FAILED, USER_SUSPENDED})
+    @PostMapping("/{provider}/callback")
+    public ResponseEntity<Void> callbackPost(@PathVariable String provider,
+                                             @RequestParam(required = false) String code,
+                                             @RequestParam String state,
+                                             @RequestParam(required = false, name = "error") String error,
+                                             @RequestParam(required = false, name = "user") String user) {
+        return redirect(oauthRedirectService.handleCallback(provider, code, state, error, user));
+    }
+
     @ApiErrorCodes({INVALID_OAUTH_RESULT_CODE})
     @PostMapping("/result")
     public ApiResponse<OAuthLoginResponse> result(@Valid @RequestBody OAuthResultRequest request) {

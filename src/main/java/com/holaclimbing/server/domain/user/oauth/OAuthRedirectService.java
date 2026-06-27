@@ -68,6 +68,17 @@ public class OAuthRedirectService {
 
     @Transactional
     public String handleCallback(String providerValue, String providerCode, String stateToken, String providerError) {
+        return handleCallback(providerValue, providerCode, stateToken, providerError, null);
+    }
+
+    @Transactional
+    public String handleCallback(
+            String providerValue,
+            String providerCode,
+            String stateToken,
+            String providerError,
+            String providerUserJson
+    ) {
         OAuthProvider provider = OAuthProvider.from(providerValue);
         OAuthState state = stateStore.consume(stateToken)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_OAUTH_STATE));
@@ -85,7 +96,13 @@ public class OAuthRedirectService {
                 ? backendCallbackUri(provider)
                 : state.backendRedirectUri();
         OAuthUserProfile profile = clientResolver.resolve(provider)
-                .fetchProfile(new OAuthAuthorizationCodeRequest(provider, providerCode, backendRedirectUri));
+                .fetchProfile(new OAuthAuthorizationCodeRequest(
+                        provider,
+                        providerCode,
+                        backendRedirectUri,
+                        state.nonce(),
+                        providerUserJson
+                ));
         OAuthLoginResponse response = resolveLoginResponse(profile);
         String oauthCode = resultStore.issue(response);
         return UriComponentsBuilder.fromUriString(state.redirectUri())
