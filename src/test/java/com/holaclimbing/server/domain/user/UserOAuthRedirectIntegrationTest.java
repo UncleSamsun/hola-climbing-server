@@ -173,6 +173,56 @@ class UserOAuthRedirectIntegrationTest {
     }
 
     @Test
+    @DisplayName("Apple OAuth callback for existing social user returns Hola tokens")
+    void appleCallback_existingSocialUser_returnsTokenThroughOneTimeCode() throws Exception {
+        User existing = User.builder()
+                .email("apple-existing@hola.com")
+                .emailVerified(true)
+                .provider("apple")
+                .providerId("apple-sub-existing")
+                .nickname("appleexisting")
+                .build();
+        userMapper.insertOAuth(existing);
+
+        String oauthCode = appleCallbackAndExtractOauthCode("apple-existing-code", null);
+
+        mockMvc.perform(post("/api/auth/oauth/result")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new OAuthResultRequest(oauthCode))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("LOGGED_IN"))
+                .andExpect(jsonPath("$.data.signupRequired").value(false))
+                .andExpect(jsonPath("$.data.token.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.token.refreshToken").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("Apple OAuth callback for existing local email returns email-existing status")
+    void appleCallback_existingLocalEmail_returnsEmailAlreadyExistsStatus() throws Exception {
+        User localUser = User.builder()
+                .email("local-email@hola.com")
+                .passwordHash("hashed-password")
+                .emailVerified(true)
+                .nickname("localemail")
+                .build();
+        userMapper.insert(localUser);
+
+        String oauthCode = appleCallbackAndExtractOauthCode("apple-local-email-code", null);
+
+        JsonNode resultData = dataOf(mockMvc.perform(post("/api/auth/oauth/result")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new OAuthResultRequest(oauthCode))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("EMAIL_ALREADY_EXISTS"))
+                .andExpect(jsonPath("$.data.signupRequired").value(false))
+                .andExpect(jsonPath("$.data.email").value("local-email@hola.com")));
+
+        assertThat(resultData.hasNonNull("token")).isFalse();
+        assertThat(resultData.hasNonNull("signupToken")).isFalse();
+        assertThat(userMapper.findByProvider("apple", "apple-sub-local-email")).isNull();
+    }
+
+    @Test
     @DisplayName("OAuth callback for existing social user redirects with one-time oauthCode and returns Hola tokens")
     void callback_existingSocialUser_returnsTokenThroughOneTimeCode() throws Exception {
         User existing = User.builder()
@@ -409,6 +459,31 @@ class UserOAuthRedirectIntegrationTest {
         return oauthCode;
     }
 
+    private String appleCallbackAndExtractOauthCode(String providerCode, String userJson) throws Exception {
+        String authorizeLocation = authorizeAndGetProviderLocation("apple");
+        String state = queryOf(authorizeLocation).get("state");
+
+        var request = post("/api/auth/oauth/apple/callback")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("code", providerCode)
+                .param("state", state);
+        if (userJson != null) {
+            request.param("user", userJson);
+        }
+
+        String frontendLocation = mockMvc.perform(request)
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().exists(HttpHeaders.LOCATION))
+                .andReturn()
+                .getResponse()
+                .getHeader(HttpHeaders.LOCATION);
+
+        assertThat(frontendLocation).startsWith(FRONTEND_CALLBACK + "?");
+        String oauthCode = queryOf(frontendLocation).get("oauthCode");
+        assertThat(oauthCode).isNotBlank();
+        return oauthCode;
+    }
+
     private JsonNode dataOf(ResultActions actions) throws Exception {
         String body = actions.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return objectMapper.readTree(body).path("data");
@@ -500,6 +575,20 @@ class UserOAuthRedirectIntegrationTest {
                                     null
                             );
                         }
+                        case "apple-existing-code" -> new OAuthUserProfile(
+                                OAuthProvider.APPLE,
+                                "apple-sub-existing",
+                                "apple-existing@hola.com",
+                                "Apple Existing",
+                                null
+                        );
+                        case "apple-local-email-code" -> new OAuthUserProfile(
+                                OAuthProvider.APPLE,
+                                "apple-sub-local-email",
+                                "local-email@hola.com",
+                                "Apple Local",
+                                null
+                        );
                         default -> throw new AssertionError("Unexpected Apple OAuth code: " + request.code());
                     };
                 }
