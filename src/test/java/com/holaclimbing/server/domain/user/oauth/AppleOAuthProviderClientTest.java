@@ -85,6 +85,23 @@ class AppleOAuthProviderClientTest {
     }
 
     @Test
+    void fetchProfile_doesNotUseAppleUserJsonEmailWhenClaimEmailIsMissing() {
+        OAuthUserProfile profile = client.fetchProfile(new OAuthAuthorizationCodeRequest(
+                OAuthProvider.APPLE,
+                "claims-email-missing-code",
+                "https://api.hola-climb.app/api/auth/oauth/apple/callback",
+                "nonce-123",
+                "{\"name\":{\"firstName\":\"Payload\",\"lastName\":\"Only\"},\"email\":\"payload-only@hola.com\"}"
+        ));
+
+        assertThat(profile.provider()).isEqualTo(OAuthProvider.APPLE);
+        assertThat(profile.providerId()).isEqualTo("apple-sub");
+        assertThat(profile.email()).isNull();
+        assertThat(profile.nickname()).isEqualTo("Payload Only");
+        assertThat(profile.profileImage()).isNull();
+    }
+
+    @Test
     void fetchProfile_withoutIdTokenThrowsAuthorizationFailed() {
         assertThatThrownBy(() -> client.fetchProfile(new OAuthAuthorizationCodeRequest(
                 OAuthProvider.APPLE,
@@ -110,6 +127,13 @@ class AppleOAuthProviderClientTest {
         if (requestBody.contains("code=missing-id-token-code")) {
             respond(exchange, 200, """
                     {"access_token":"apple-access","token_type":"Bearer","expires_in":3600}
+                    """);
+            return;
+        }
+
+        if (requestBody.contains("code=claims-email-missing-code")) {
+            respond(exchange, 200, """
+                    {"access_token":"apple-access","token_type":"Bearer","expires_in":3600,"id_token":"apple-id-token-without-email"}
                     """);
             return;
         }
@@ -150,9 +174,12 @@ class AppleOAuthProviderClientTest {
 
         @Override
         public AppleIdTokenClaims verify(String idToken, OAuthProperties.Provider provider, String expectedNonce) {
-            assertThat(idToken).isEqualTo("apple-id-token");
+            assertThat(idToken).isIn("apple-id-token", "apple-id-token-without-email");
             assertThat(provider.clientId()).isEqualTo("test.apple.service");
             assertThat(expectedNonce).isEqualTo("nonce-123");
+            if ("apple-id-token-without-email".equals(idToken)) {
+                return new AppleIdTokenClaims("apple-sub", null, true);
+            }
             return new AppleIdTokenClaims("apple-sub", "apple@hola.com", true);
         }
     }

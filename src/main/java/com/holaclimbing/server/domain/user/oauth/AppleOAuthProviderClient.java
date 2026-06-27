@@ -44,12 +44,11 @@ public class AppleOAuthProviderClient extends AbstractOAuthProviderClient {
 
         AppleIdTokenClaims claims = idTokenVerifier.verify(idToken, providerProperties, request.nonce());
         AppleUserPayload userPayload = parseAppleUserPayload(request.providerUserJson());
-        String email = isBlank(claims.email()) ? userPayload.email() : claims.email();
 
         return new OAuthUserProfile(
                 provider(),
                 claims.subject(),
-                email,
+                claims.email(),
                 userPayload.fullName(),
                 null
         );
@@ -69,10 +68,9 @@ public class AppleOAuthProviderClient extends AbstractOAuthProviderClient {
         }
         try {
             JsonNode root = objectMapper.readTree(providerUserJson);
-            String email = root.path("email").asText(null);
             JsonNode name = root.path("name");
             String fullName = fullName(name.path("firstName").asText(null), name.path("lastName").asText(null));
-            return new AppleUserPayload(email, fullName);
+            return new AppleUserPayload(fullName);
         } catch (JsonProcessingException e) {
             return AppleUserPayload.empty();
         }
@@ -98,10 +96,10 @@ public class AppleOAuthProviderClient extends AbstractOAuthProviderClient {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private record AppleUserPayload(String email, String fullName) {
+    private record AppleUserPayload(String fullName) {
 
         private static AppleUserPayload empty() {
-            return new AppleUserPayload(null, null);
+            return new AppleUserPayload(null);
         }
     }
 }
