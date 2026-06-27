@@ -29,33 +29,38 @@ abstract class AbstractOAuthProviderClient implements OAuthProviderClient {
     }
 
     protected String exchangeCodeForAccessToken(OAuthAuthorizationCodeRequest request) {
-        OAuthProperties.Provider providerProperties = properties.provider(request.provider());
+        JsonNode response = exchangeCodeForTokenResponse(request);
+        String accessToken = response == null ? null : response.path("access_token").asText(null);
+        if (isBlank(accessToken)) {
+            throw new BusinessException(ErrorCode.OAUTH_AUTHORIZATION_FAILED);
+        }
+        return accessToken;
+    }
+
+    protected JsonNode exchangeCodeForTokenResponse(OAuthAuthorizationCodeRequest request) {
+        OAuthProperties.Provider providerProperties = providerProperties(request.provider());
         if (providerProperties == null || isBlank(providerProperties.clientId()) || isBlank(providerProperties.tokenUri())) {
             throw new BusinessException(ErrorCode.OAUTH_AUTHORIZATION_FAILED);
         }
 
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("grant_type", "authorization_code");
-        body.add("client_id", providerProperties.clientId());
-        if (!isBlank(providerProperties.clientSecret())) {
-            body.add("client_secret", providerProperties.clientSecret());
-        }
-        body.add("code", request.code());
-        body.add("redirect_uri", request.redirectUri());
-
         try {
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("grant_type", "authorization_code");
+            body.add("client_id", providerProperties.clientId());
+            String clientSecret = clientSecretValue(request, providerProperties);
+            if (!isBlank(clientSecret)) {
+                body.add("client_secret", clientSecret);
+            }
+            body.add("code", request.code());
+            body.add("redirect_uri", request.redirectUri());
+
             String responseBody = restClient.post()
                     .uri(providerProperties.tokenUri())
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(body)
                     .retrieve()
                     .body(String.class);
-            JsonNode response = parseJson(request.provider(), "token exchange", responseBody);
-            String accessToken = response == null ? null : response.path("access_token").asText(null);
-            if (isBlank(accessToken)) {
-                throw new BusinessException(ErrorCode.OAUTH_AUTHORIZATION_FAILED);
-            }
-            return accessToken;
+            return parseJson(request.provider(), "token exchange", responseBody);
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientResponseException e) {
@@ -67,6 +72,17 @@ abstract class AbstractOAuthProviderClient implements OAuthProviderClient {
                     request.provider().value(), e.toString());
             throw new BusinessException(ErrorCode.OAUTH_AUTHORIZATION_FAILED);
         }
+    }
+
+    protected OAuthProperties.Provider providerProperties(OAuthProvider provider) {
+        return properties.provider(provider);
+    }
+
+    protected String clientSecretValue(
+            OAuthAuthorizationCodeRequest request,
+            OAuthProperties.Provider providerProperties
+    ) {
+        return providerProperties.clientSecret();
     }
 
     protected JsonNode getUserInfo(OAuthProvider provider, String accessToken) {
@@ -92,7 +108,7 @@ abstract class AbstractOAuthProviderClient implements OAuthProviderClient {
         }
     }
 
-    private static boolean isBlank(String value) {
+    protected static boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
 
@@ -103,7 +119,7 @@ abstract class AbstractOAuthProviderClient implements OAuthProviderClient {
         return value.substring(0, MAX_ERROR_BODY_LENGTH) + "...";
     }
 
-    private JsonNode parseJson(OAuthProvider provider, String step, String responseBody) {
+    protected JsonNode parseJson(OAuthProvider provider, String step, String responseBody) {
         if (isBlank(responseBody)) {
             log.warn("OAuth {} returned empty response body: provider={}", step, provider.value());
             throw new BusinessException(ErrorCode.OAUTH_AUTHORIZATION_FAILED);
