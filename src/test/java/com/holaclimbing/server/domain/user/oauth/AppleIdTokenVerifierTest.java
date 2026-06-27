@@ -74,19 +74,71 @@ class AppleIdTokenVerifierTest {
         assertAuthorizationFailure(() -> verifier.verify(token, provider, "different-nonce"));
     }
 
+    @Test
+    void verify_missingExpectedNonceThrowsAuthorizationFailure() {
+        String token = appleIdToken(provider.clientId(), NONCE);
+
+        assertAuthorizationFailure(() -> verifier.verify(token, provider, null));
+        assertAuthorizationFailure(() -> verifier.verify(token, provider, " "));
+    }
+
+    @Test
+    void verify_missingTokenNonceThrowsAuthorizationFailure() {
+        String token = appleIdTokenWithoutNonce(provider.clientId());
+
+        assertAuthorizationFailure(() -> verifier.verify(token, provider, NONCE));
+    }
+
+    @Test
+    void verify_blankTokenNonceThrowsAuthorizationFailure() {
+        String token = appleIdToken(provider.clientId(), " ");
+
+        assertAuthorizationFailure(() -> verifier.verify(token, provider, NONCE));
+    }
+
+    @Test
+    void verify_booleanFalseEmailVerifiedThrowsAuthorizationFailure() {
+        String token = appleIdToken(provider.clientId(), NONCE, false);
+
+        assertAuthorizationFailure(() -> verifier.verify(token, provider, NONCE));
+    }
+
+    @Test
+    void verify_stringFalseEmailVerifiedThrowsAuthorizationFailure() {
+        String token = appleIdToken(provider.clientId(), NONCE, "false");
+
+        assertAuthorizationFailure(() -> verifier.verify(token, provider, NONCE));
+    }
+
     private String appleIdToken(String audience, String nonce) {
-        return Jwts.builder()
+        return appleIdToken(audience, nonce, true);
+    }
+
+    private String appleIdToken(String audience, String nonce, Object emailVerified) {
+        return baseAppleIdToken(audience)
                 .header().keyId(KEY_ID).and()
+                .claim("nonce", nonce)
+                .claim("email_verified", emailVerified)
+                .signWith(keyPair.getPrivate(), Jwts.SIG.RS256)
+                .compact();
+    }
+
+    private String appleIdTokenWithoutNonce(String audience) {
+        return baseAppleIdToken(audience)
+                .header().keyId(KEY_ID).and()
+                .claim("email_verified", true)
+                .signWith(keyPair.getPrivate(), Jwts.SIG.RS256)
+                .compact();
+    }
+
+    private io.jsonwebtoken.JwtBuilder baseAppleIdToken(String audience) {
+        return Jwts.builder()
                 .issuer("https://appleid.apple.com")
                 .subject("apple-sub")
                 .audience().add(audience).and()
                 .issuedAt(Date.from(FIXED_ISSUED_AT))
                 .expiration(Date.from(Instant.parse("2030-06-27T00:00:00Z")))
-                .claim("nonce", nonce)
-                .claim("email", "apple@hola.com")
-                .claim("email_verified", true)
-                .signWith(keyPair.getPrivate(), Jwts.SIG.RS256)
-                .compact();
+                .claim("email", "apple@hola.com");
     }
 
     private static void assertAuthorizationFailure(ThrowingCallable callable) {

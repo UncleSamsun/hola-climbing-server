@@ -37,7 +37,7 @@ public class AppleIdTokenVerifier {
         return new AppleIdTokenClaims(
                 claims.getSubject(),
                 claims.get("email", String.class),
-                emailVerified(claims.get("email_verified"))
+                true
         );
     }
 
@@ -87,11 +87,16 @@ public class AppleIdTokenVerifier {
         if (claims.getAudience() == null || !claims.getAudience().contains(provider.clientId())) {
             throw authorizationFailure();
         }
-        if (StringUtils.hasText(expectedNonce)
-                && !expectedNonce.equals(claims.get("nonce", String.class))) {
+        String tokenNonce = claims.get("nonce", String.class);
+        if (!StringUtils.hasText(expectedNonce)
+                || !StringUtils.hasText(tokenNonce)
+                || !expectedNonce.equals(tokenNonce)) {
             throw authorizationFailure();
         }
         if (!StringUtils.hasText(claims.getSubject())) {
+            throw authorizationFailure();
+        }
+        if (!emailVerified(claims.get("email_verified"))) {
             throw authorizationFailure();
         }
     }
