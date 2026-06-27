@@ -67,6 +67,17 @@ class AppleClientSecretGeneratorTest {
         assertAuthorizationFailure(() -> generator.generate(appleProvider("com.hola.app", "TEAMID1234", "KEYID1234", " ", 30)));
     }
 
+    @Test
+    void generate_invalidClientSecretTtlDaysThrowsAuthorizationFailure() throws Exception {
+        KeyPair keyPair = generateEcP256KeyPair();
+        String privateKeyBase64 = base64EncodedPem(keyPair);
+        AppleClientSecretGenerator generator = new AppleClientSecretGenerator(new ApplePrivateKeyParser(), FIXED_CLOCK);
+
+        assertAuthorizationFailure(() -> generator.generate(appleProvider(privateKeyBase64, 0)));
+        assertAuthorizationFailure(() -> generator.generate(appleProvider(privateKeyBase64, -1)));
+        assertAuthorizationFailure(() -> generator.generate(appleProvider(privateKeyBase64, 181)));
+    }
+
     private static void assertAuthorizationFailure(ThrowingCallable callable) {
         assertThatThrownBy(callable::call)
                 .isInstanceOfSatisfying(BusinessException.class, exception ->

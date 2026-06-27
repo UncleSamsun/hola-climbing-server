@@ -35,7 +35,9 @@ public class AppleClientSecretGenerator {
         validateProvider(provider);
 
         Instant now = Instant.now(clock).truncatedTo(ChronoUnit.SECONDS);
-        Instant expiresAt = now.plus(provider.effectiveClientSecretTtlDays(), ChronoUnit.DAYS);
+        int ttlDays = provider.effectiveClientSecretTtlDays();
+        validateTtlDays(ttlDays);
+        Instant expiresAt = now.plus(ttlDays, ChronoUnit.DAYS);
         PrivateKey privateKey = privateKeyParser.parseBase64Pem(provider.privateKeyBase64());
 
         return Jwts.builder()
@@ -55,6 +57,12 @@ public class AppleClientSecretGenerator {
                 || !StringUtils.hasText(provider.teamId())
                 || !StringUtils.hasText(provider.keyId())
                 || !StringUtils.hasText(provider.privateKeyBase64())) {
+            throw new BusinessException(ErrorCode.OAUTH_AUTHORIZATION_FAILED);
+        }
+    }
+
+    private void validateTtlDays(int ttlDays) {
+        if (ttlDays < 1 || ttlDays > 180) {
             throw new BusinessException(ErrorCode.OAUTH_AUTHORIZATION_FAILED);
         }
     }
